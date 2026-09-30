@@ -16,6 +16,17 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------
+# FUNCIÓN UTILITARIA DE NORMALIZACIÓN DE SKU (BLINDAJE DE TIPOS)
+# ---------------------------------------------------------------------
+def normalizar_sku(val):
+    if pd.isna(val):
+        return ""
+    val_str = str(val).strip()
+    if val_str.endswith(".0"):
+        val_str = val_str[:-2]
+    return val_str
+
+# ---------------------------------------------------------------------
 # ESTILOS GLOBALES UI KIT LÁQUESIS
 # ---------------------------------------------------------------------
 def aplicar_ui_kit():
@@ -384,6 +395,9 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
         except Exception:
             df_input = pd.read_excel(archivo_subido)
             
+        # Normalización estricta de columna SKU en el input
+        df_input["SKU_norm"] = df_input["SKU"].apply(normalizar_sku)
+            
         st.success(f"✅ Archivo cargado correctamente: **{len(df_input)} SKUs** detectados.")
         
         ya_procesado = "df_resultados_v1_1" in st.session_state
@@ -428,7 +442,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 cols_historico = [col for col in df_input.columns if col.startswith("M") and col[1:].isdigit()]
                 
                 for idx, row in df_input.iterrows():
-                    sku = str(row["SKU"])
+                    sku_normalizado = row["SKU_norm"]
                     desc = row.get("Descripcion", "")
                     series_val = row[cols_historico].values.astype(float)
                     
@@ -457,7 +471,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                     puntaje = res_forecast["Puntaje_Total"]
                     
                     if "Tabla_Competencia" in res_forecast:
-                        detalle_competencia_dict[sku] = pd.DataFrame(res_forecast["Tabla_Competencia"])
+                        detalle_competencia_dict[sku_normalizado] = pd.DataFrame(res_forecast["Tabla_Competencia"])
                     else:
                         comp_data = res_forecast.get("Detalle_Modelos", [
                             {"Modelo": "Promedio Simple", "MAE": round(np.std(series_val)*0.8, 2), "BIAS": -1.2, "Puntaje_MAE": 4.8, "Puntaje_BIAS": 5.0, "Puntaje_Total": 9.8, "Pronostico_M37": round(p_m37, 2), "Estatus": "🏆 GANADOR" if metodo == "Promedio Simple" else "Finalista"},
@@ -466,7 +480,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                             {"Modelo": "Croston-SBA", "MAE": round(np.std(series_val)*1.3, 2), "BIAS": -2.1, "Puntaje_MAE": 3.5, "Puntaje_BIAS": 3.5, "Puntaje_Total": 7.0, "Pronostico_M37": round(p_m37*0.95, 2), "Estatus": "Finalista"},
                             {"Modelo": "Suavización Exponencial (SES)", "MAE": round(np.std(series_val)*1.4, 2), "BIAS": -4.2, "Puntaje_MAE": 3.0, "Puntaje_BIAS": 2.8, "Puntaje_Total": 5.8, "Pronostico_M37": round(p_m37*0.91, 2), "Estatus": "Eliminado"}
                         ])
-                        detalle_competencia_dict[sku] = pd.DataFrame(comp_data)
+                        detalle_competencia_dict[sku_normalizado] = pd.DataFrame(comp_data)
 
                     std_diaria = float(np.std(series_val) / dias_bloque)
                     
@@ -485,7 +499,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                     )
                     
                     fila_res = {
-                        "SKU": sku,
+                        "SKU": sku_normalizado,
                         "Descripcion": desc,
                         "Categoria": res_inv["Categoria_Demanda"],
                         "Lote_Venta_Z": res_inv["Lote_Promedio_Z"],
@@ -523,7 +537,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
             st.subheader("⚔️ Matriz de Competencia Multimodelo por SKU (Validación BIAS & MAE)")
             st.markdown("Selecciona un SKU para auditar el desempeño de los 10 modelos evaluados:")
             
-            sku_lista = [str(s) for s in df_res["SKU"].unique()]
+            sku_lista = [normalizar_sku(s) for s in df_res["SKU"].unique()]
             sku_seleccionado = st.selectbox("SKU para Auditoría Múltiple:", sku_lista, key="sku_audit_select")
             
             dict_comp = st.session_state.get("detalle_competencia_v1_1", {})
@@ -535,77 +549,68 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
             
-            # 3. INSPECCIÓN INDIVIDUAL Y GRÁFICO DINÁMICO DE BACKTESTING
+            # 3. INSPECCIÓN INDIVIDUAL Y GRÁFICO (BÚSQUEDA ROBUSTA DE FILA)
             st.subheader("📈 Inspección Individual por SKU")
             
-            row_res = df_res[df_res["SKU"] == sku_seleccionado].iloc[0]
-            row_inp = st.session_state["df_input_v1_1"][st.session_state["df_input_v1_1"]["SKU"].astype(str) == sku_seleccionado].iloc[0]
+            df_inp_state = st.session_state["df_input_v1_1"]
             
-            cols_m = [c for c in st.session_state["df_input_v1_1"].columns if c.startswith("M") and c[1:].isdigit()]
-            serie_hist = row_inp[cols_m].values.astype(float)
+            # Búsqueda segura usando SKU_norm
+            filtro_res = df_res[df_res["SKU"] == sku_seleccionado]
+            filtro_inp = df_inp_state[df_inp_state["SKU_norm"] == sku_seleccionado]
             
-            col1, col2, col3, col4, col5 = st.columns(5)
-            with col1:
-                render_kpi_card("Categoría", row_res["Categoria"])
-            with col2:
-                render_kpi_card("Método Ganador", row_res["Metodo_Ganador"])
-            with col3:
-                render_kpi_card("Pronóstico M37", f"{row_res['Pronostico_M37']} uds")
-            with col4:
-                render_kpi_card("Punto Reorden (PDR)", f"{row_res['Punto_Reorden_PDR']} uds")
-            with col5:
-                render_kpi_card("Stock Máximo", f"{row_res['Stock_Maximo']} uds")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            
-            # -----------------------------------------------------------------
-            # LÓGICA DE VISUALIZACIÓN REAL DE BACKTESTING (M25 -> M36) Y PROYECCIÓN M37
-            # -----------------------------------------------------------------
-            # 1. Ventas reales (M01 - M36)
-            x_hist = np.arange(1, 37)
-            
-            # 2. Simulación de la curva de prueba (Backtest M25-M36) del método ganador
-            # Calculada sobre los primeros 24 meses (entrenamiento) para evaluar la prueba a ciegas M25-M36
-            media_train = np.mean(serie_hist[:24])
-            std_train = np.std(serie_hist[:24]) if np.std(serie_hist[:24]) > 0 else 1.0
-            
-            # Generación de la serie de backtesting según la tendencia del ganador
-            np.random.seed(42) # Consistencia visual
-            backtest_m25_m36 = media_train + (serie_hist[24:36] - media_train) * 0.45
-            
-            x_backtest = np.arange(25, 37)
-            
-            # 3. Extensión al periodo M37
-            x_m37 = 37
-            val_m37 = float(row_res['Pronostico_M37'])
-            
-            x_pronostico_full = np.append(x_backtest, x_m37)
-            y_pronostico_full = np.append(backtest_m25_m36, val_m37)
-            
-            # CREACIÓN DE LA GRÁFICA CON ZONA SOMBREADA DE EVALUACIÓN MAE/BIAS
-            fig, ax = plt.subplots(figsize=(10, 4.2))
-            fig.patch.set_facecolor("#121519")
-            ax.set_facecolor("#1A1F26")
-            
-            # Sombrear la ventana de auditoría MAE/BIAS (M25 - M36)
-            ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.05, label="Ventana Evaluación (M25-M36)")
-            
-            # Línea de Ventas Reales (M01 - M36)
-            ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", color="#00E5FF", linewidth=2.2, zorder=3)
-            
-            # Curva de Pronóstico Backtest (M25 - M36) + Punto Proyectado M37
-            ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
-                    marker="s", linestyle="--", color="#FF2A6D", linewidth=2.2, zorder=4)
-            
-            # Destacar el nodo proyectado M37
-            ax.scatter(x_m37, val_m37, color="#FF2A6D", s=90, edgecolor="#FFFFFF", linewidth=2, zorder=5)
-            
-            ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=12, fontweight='bold')
-            ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8")
-            ax.set_ylabel("Unidades Demanda", color="#94A3B8")
-            ax.set_xticks(np.arange(0, 39, 3))
-            ax.tick_params(colors="#94A3B8")
-            ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left")
-            ax.grid(True, linestyle=":", alpha=0.3, color="#2D3748")
-            
-            st.pyplot(fig)
+            if not filtro_res.empty and not filtro_inp.empty:
+                row_res = filtro_res.iloc[0]
+                row_inp = filtro_inp.iloc[0]
+                
+                cols_m = [c for c in df_inp_state.columns if c.startswith("M") and c[1:].isdigit()]
+                serie_hist = row_inp[cols_m].values.astype(float)
+                
+                col1, col2, col3, col4, col5 = st.columns(5)
+                with col1:
+                    render_kpi_card("Categoría", row_res["Categoria"])
+                with col2:
+                    render_kpi_card("Método Ganador", row_res["Metodo_Ganador"])
+                with col3:
+                    render_kpi_card("Pronóstico M37", f"{row_res['Pronostico_M37']} uds")
+                with col4:
+                    render_kpi_card("Punto Reorden (PDR)", f"{row_res['Punto_Reorden_PDR']} uds")
+                with col5:
+                    render_kpi_card("Stock Máximo", f"{row_res['Stock_Maximo']} uds")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # VISUALIZACIÓN DE BACKTESTING (M25 -> M36) Y PROYECCIÓN M37
+                x_hist = np.arange(1, 37)
+                
+                media_train = np.mean(serie_hist[:24])
+                np.random.seed(42)
+                backtest_m25_m36 = media_train + (serie_hist[24:36] - media_train) * 0.45
+                
+                x_backtest = np.arange(25, 37)
+                x_m37 = 37
+                val_m37 = float(row_res['Pronostico_M37'])
+                
+                x_pronostico_full = np.append(x_backtest, x_m37)
+                y_pronostico_full = np.append(backtest_m25_m36, val_m37)
+                
+                fig, ax = plt.subplots(figsize=(10, 4.2))
+                fig.patch.set_facecolor("#121519")
+                ax.set_facecolor("#1A1F26")
+                
+                ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.05, label="Ventana Evaluación (M25-M36)")
+                ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", color="#00E5FF", linewidth=2.2, zorder=3)
+                ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
+                        marker="s", linestyle="--", color="#FF2A6D", linewidth=2.2, zorder=4)
+                ax.scatter(x_m37, val_m37, color="#FF2A6D", s=90, edgecolor="#FFFFFF", linewidth=2, zorder=5)
+                
+                ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=12, fontweight='bold')
+                ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8")
+                ax.set_ylabel("Unidades Demanda", color="#94A3B8")
+                ax.set_xticks(np.arange(0, 39, 3))
+                ax.tick_params(colors="#94A3B8")
+                ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left")
+                ax.grid(True, linestyle=":", alpha=0.3, color="#2D3748")
+                
+                st.pyplot(fig)
+            else:
+                st.warning(f"⚠️ No se encontraron registros coincidentes para el SKU: `{sku_seleccionado}`.")
