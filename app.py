@@ -256,7 +256,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.2.0 &bull; Release Producción
+    Motor Láquesis v1.3.0 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -373,10 +373,10 @@ else:
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 36px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 18px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.2
+Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.3
 </p>
 <div style="color: #94A3B8; font-size: 15px; max-width: 700px; margin: 0 auto 35px auto; line-height: 1.6;">
-Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios y Regla de Piso por Evento Máximo para SKUs prioritarios.
+Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo y Techo Supremo de Cobertura por Días (90d / 30d).
 </div>
 <div style="background-color: #1A1F26; border: 1px dashed #00E5FF; border-radius: 12px; padding: 30px; max-width: 650px; margin: 0 auto;">
 <div style="color: #FFFFFF; font-size: 20px; font-weight: 700; margin-bottom: 8px;">
@@ -431,7 +431,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.2)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.3)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -503,6 +503,8 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                         evento_maximo=evt_max
                     )
                     
+                    label_cobertura = f"⚠️ Topado ({res_inv['Dias_Max_Cobertura']}d)" if res_inv.get("Cap_Cobertura_Aplicado", False) else "OK"
+
                     fila_res = {
                         "SKU": sku_normalizado,
                         "Descripcion": desc,
@@ -515,6 +517,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                         "Stock_Seguridad_SS": res_inv["SS"],
                         "Punto_Reorden_PDR": res_inv["PDR"],
                         "Ajuste_Piso_Evento": "🛡️ SÍ (Ajustado)" if res_inv.get("Piso_Evento_Aplicado", False) else "NO",
+                        "Cobertura_Max_Ajustada": label_cobertura,
                         "Stock_Maximo": res_inv["Stock_Maximo"],
                         "Lote_Economico_Q": res_inv["EOQ_Q"],
                         "Reabasto_Sugerido": res_inv["Reabasto_Sugerido"]
@@ -528,14 +531,14 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 st.session_state["detalle_competencia"] = detalle_competencia_dict
                 st.rerun()
 
-        # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
+        # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN (Usando tus llaves exactas)
         df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
         
         if df_res is not None:
-            st.success("🎉 ¡Procesamiento v1.2 completado!")
+            st.success("🎉 ¡Procesamiento v1.3 completado!")
             
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.2)")
+            st.subheader("📋 Resumen General de Resultados (v1.3)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
@@ -592,6 +595,10 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 if row_res.get("Ajuste_Piso_Evento") == "🛡️ SÍ (Ajustado)":
                     st.info("🛡️ **Piso de Protección Activado:** El Punto de Reorden ($PDR$) de este SKU fue ajustado hacia arriba para ser al menos igual al **Evento Máximo** registrado, garantizando cobertura ante picos de demanda.")
                 
+                # Banner informativo si aplicó la regla de techo de cobertura
+                if "⚠️ Topado" in str(row_res.get("Cobertura_Max_Ajustada", "")):
+                    st.warning(f"⚠️ **Techo Supremo de Cobertura Activado:** El Stock Máximo de este SKU fue ajustado para no rebasar la política corporativa de días de inventario ({row_res['Cobertura_Max_Ajustada']}), conservando la brecha de reabasto.")
+
                 x_hist = np.arange(1, 37)
                 
                 media_train = np.mean(serie_hist[:24])
