@@ -77,6 +77,9 @@ def calcular_metricas_inventario(
             max_exacto = pdr_exacto + lote_operativo
             ss_exacto = max(ss_exacto, pdr_exacto - demanda_lt)
 
+    # Registro del Piso Base de Protección (Lead Time + SS)
+    pdr_piso_base = max(pdr_exacto, demanda_lt + ss_exacto)
+
     # 3. Regla de Piso por Evento Máximo
     z_redondeado = round(z, 2)
     es_sku_prioritario = z_redondeado in [1.65, 2.05]
@@ -91,15 +94,12 @@ def calcular_metricas_inventario(
                     ss_exacto = pdr_exacto - demanda_lt
                     max_exacto = pdr_exacto + lote_operativo
                     piso_evento_aplicado = True
+                    pdr_piso_base = max(pdr_piso_base, val_evt)
         except (ValueError, TypeError):
             pass
 
-    # 4. Regla de Techo por Cobertura Máxima de Días (Con Garantía de Separación)
-    if z_redondeado in [1.04, 1.28]:
-        dias_max_cobertura = 30.0
-    else:
-        dias_max_cobertura = 90.0
-
+    # 4. Regla de Techo por Cobertura Máxima con Protección de Piso PDR
+    dias_max_cobertura = 30.0 if z_redondeado in [1.04, 1.28] else 90.0
     tope_maximo_unidades = ddp * dias_max_cobertura
     cap_cobertura_aplicado = False
 
@@ -108,17 +108,16 @@ def calcular_metricas_inventario(
         max_exacto = tope_maximo_unidades
         
         paso_min = float(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1.0
-        lote_disponible = max_exacto - demanda_lt
         
-        if lote_disponible >= paso_min:
-            lote_efectivo = min(lote_operativo, lote_disponible)
-            pdr_exacto = max_exacto - lote_efectivo
-        else:
-            pdr_exacto = max(demanda_lt, max_exacto - paso_min) if max_exacto > paso_min else max_exacto
+        # Mantenemos PDR protegido por el piso base sin permitir que el recorte del tope lo colapse por debajo
+        pdr_exacto = min(max_exacto - paso_min, pdr_piso_base)
+        
+        if pdr_exacto < (demanda_lt + ss_exacto) and max_exacto > demanda_lt:
+            pdr_exacto = min(max_exacto - paso_min, demanda_lt + ss_exacto)
             
         ss_exacto = max(0.0, pdr_exacto - demanda_lt)
 
-    # 5. Ajuste por Múltiplo de Empaque / Redondeos
+    # 5. Redondeos por Empaque o Enteros
     if multiplo_empaque is not None and multiplo_empaque > 0:
         emp = float(multiplo_empaque)
         pdr_final = int(np.ceil(pdr_exacto / emp) * emp) if pdr_exacto > 0 else 0
@@ -131,7 +130,13 @@ def calcular_metricas_inventario(
         ss_final = int(np.ceil(ss_exacto))
         q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
 
-    # 6. Salvaguarda Absoluta de Separación Obligatoria
+    # 6. PISO INFERIOR DE SEGURIDAD OPERATIVA PDR (Protección Anti-Stockout en Sucursal)
+    if max_final >= 4:
+        pdr_piso_operativo = max(2, int(np.ceil(0.33 * max_final)))
+        if pdr_final < pdr_piso_operativo:
+            pdr_final = pdr_piso_operativo
+
+    # Salvaguarda Absoluta de Separación Obligatoria
     if max_final > 1 and pdr_final >= max_final:
         paso_separacion = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
         pdr_final = max(1, max_final - paso_separacion)
