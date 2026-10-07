@@ -255,7 +255,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Láquesis Engine v1.1.0 &bull; Release Producción
+    Motor Láquesis v1.1.0 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -370,7 +370,7 @@ else:
     if archivo_subido is None:
         welcome_html = """
 <div class="welcome-card">
-<h1 style="color: #FFFFFF; font-size: 36px; font-weight: 800; margin-bottom: 10px;">Welcome to Láquesis</h1>
+<h1 style="color: #FFFFFF; font-size: 36px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 18px; font-weight: 600; margin-bottom: 25px;">
 Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.1
 </p>
@@ -379,7 +379,7 @@ Evalúa automáticamente 10 modelos estadísticos y de Machine Learning (incluye
 </div>
 <div style="background-color: #1A1F26; border: 1px dashed #00E5FF; border-radius: 12px; padding: 30px; max-width: 650px; margin: 0 auto;">
 <div style="color: #FFFFFF; font-size: 20px; font-weight: 700; margin-bottom: 8px;">
-👈 Share your data to start the job!
+👈 ¡Carga tus datos para comenzar!
 </div>
 <div style="color: #64748B; font-size: 14px;">
 Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo de Excel.
@@ -395,7 +395,6 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
         except Exception:
             df_input = pd.read_excel(archivo_subido)
             
-        # Normalización estricta de columna SKU en el input
         df_input["SKU_norm"] = df_input["SKU"].apply(normalizar_sku)
             
         st.success(f"✅ Archivo cargado correctamente: **{len(df_input)} SKUs** detectados.")
@@ -545,16 +544,15 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 df_comp = dict_comp[sku_seleccionado]
                 st.dataframe(df_comp, use_container_width=True)
             else:
-                st.info("ℹ️ Clic en Procesar Datos para generar el torneo de modelos.")
+                st.info("ℹ️️ Clic en Procesar Datos para generar el torneo de modelos.")
                 
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
             
-            # 3. INSPECCIÓN INDIVIDUAL Y GRÁFICO (BÚSQUEDA ROBUSTA DE FILA)
+            # 3. INSPECCIÓN INDIVIDUAL Y GRÁFICO
             st.subheader("📈 Inspección Individual por SKU")
             
             df_inp_state = st.session_state["df_input_v1_1"]
             
-            # Búsqueda segura usando SKU_norm
             filtro_res = df_res[df_res["SKU"] == sku_seleccionado]
             filtro_inp = df_inp_state[df_inp_state["SKU_norm"] == sku_seleccionado]
             
@@ -579,7 +577,6 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
-                # VISUALIZACIÓN DE BACKTESTING (M25 -> M36) Y PROYECCIÓN M37
                 x_hist = np.arange(1, 37)
                 
                 media_train = np.mean(serie_hist[:24])
