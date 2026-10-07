@@ -46,10 +46,11 @@ def calcular_metricas_inventario(
     
     te = float(tiempo_entrega_dias)
     z = float(nivel_servicio_z)
+    demanda_lt = ddp * te
     
     # 1. Cálculos Tradicionales
     ss_exacto = z * std_diaria_historica * np.sqrt(te)
-    pdr_exacto = (ddp * te) + ss_exacto
+    pdr_exacto = demanda_lt + ss_exacto
     
     # Lote Económico (EOQ)
     q_exacto = None
@@ -62,39 +63,64 @@ def calcular_metricas_inventario(
         q_exacto = np.sqrt((2.0 * costo_ordenar * demanda_anual) / h)
         
     lote_base = q_exacto if q_exacto is not None else pronostico_m37
-    max_exacto = pdr_exacto + lote_base
+    lote_operativo = max(lote_base, 1.0)
+    max_exacto = pdr_exacto + lote_operativo
     
     # 2. Protección de Lote Z para Demanda Intermitente / Errática (Release 1.1)
     adi, cv2, z_lote, categoria = 0.0, 0.0, 0.0, "Regular"
-    if series_historica is not None:
+    if series_historica is not None and len(series_historica) > 0:
         adi, cv2, z_lote, categoria = clasificar_intermitencia(series_historica)
         
         # Si el producto es Intermitente, Errático o Lumpy, aseguramos cobertura por Lote Z
         if categoria in ["Intermitente", "Errática", "Irregular (Lumpy)"]:
             pdr_exacto = max(pdr_exacto, z_lote)
-            max_exacto = pdr_exacto + max(lote_base, z_lote)
-            ss_exacto = max(ss_exacto, z_lote - (ddp * te))
+            lote_operativo = max(lote_operativo, z_lote)
+            max_exacto = pdr_exacto + lote_operativo
+            ss_exacto = max(ss_exacto, pdr_exacto - demanda_lt)
 
     # 3. Regla de Piso por Evento Máximo (Release 1.2)
-    # Aplica para SKUs importantes/prioritarios con Z = 1.65 (~95%) o Z = 2.05 (~98%)
     z_redondeado = round(z, 2)
     es_sku_prioritario = z_redondeado in [1.65, 2.05]
-    
     piso_evento_aplicado = False
+    
     if evento_maximo is not None:
         try:
             val_evt = float(evento_maximo)
             if not np.isnan(val_evt) and val_evt > 0 and es_sku_prioritario:
                 if pdr_exacto < val_evt:
                     pdr_exacto = val_evt
-                    ss_exacto = pdr_exacto - (ddp * te)
-                    lote_ref = max(lote_base, z_lote) if categoria in ["Intermitente", "Errática", "Irregular (Lumpy)"] else lote_base
-                    max_exacto = pdr_exacto + lote_ref
+                    ss_exacto = pdr_exacto - demanda_lt
+                    max_exacto = pdr_exacto + lote_operativo
                     piso_evento_aplicado = True
         except (ValueError, TypeError):
             pass
 
-    # 4. Ajuste por Múltiplo de Empaque
+    # 4. Regla de Techo por Cobertura Máxima de Días (Release 1.3 con Separación de Reabasto)
+    # Politica: Max 90 días para Z in [1.65, 2.05] | Max 30 días para Z in [1.04, 1.28]
+    if z_redondeado in [1.04, 1.28]:
+        dias_max_cobertura = 30.0
+    else:
+        dias_max_cobertura = 90.0
+
+    tope_maximo_unidades = ddp * dias_max_cobertura
+    cap_cobertura_aplicado = False
+
+    if max_exacto > tope_maximo_unidades and ddp > 0:
+        cap_cobertura_aplicado = True
+        max_exacto = tope_maximo_unidades
+        
+        paso_min = float(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1.0
+        lote_disponible = max_exacto - demanda_lt
+        
+        if lote_disponible >= paso_min:
+            lote_efectivo = min(lote_operativo, lote_disponible)
+            pdr_exacto = max_exacto - lote_efectivo
+        else:
+            pdr_exacto = max(demanda_lt, max_exacto - paso_min) if max_exacto > paso_min else max_exacto
+            
+        ss_exacto = max(0.0, pdr_exacto - demanda_lt)
+
+    # 5. Ajuste por Múltiplo de Empaque / Redondeos
     if multiplo_empaque is not None and multiplo_empaque > 0:
         emp = float(multiplo_empaque)
         pdr_final = int(np.ceil(pdr_exacto / emp) * emp) if pdr_exacto > 0 else 0
@@ -107,7 +133,13 @@ def calcular_metricas_inventario(
         ss_final = int(np.ceil(ss_exacto))
         q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
 
-    # 5. Reabasto Sugerido Neto
+    # 6. Salvaguarda Absoluta de Separación Obligatoria
+    # "Bajo el máximo solo puede ser igual al pdr cuando ambos sean iguales a 1"
+    if max_final > 1 and pdr_final >= max_final:
+        paso_separacion = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
+        pdr_final = max(1, max_final - paso_separacion)
+
+    # 7. Reabasto Sugerido Neto
     reabasto_sugerido = None
     if inventario_actual is not None:
         inv_act = float(inventario_actual)
@@ -132,5 +164,7 @@ def calcular_metricas_inventario(
         "Stock_Maximo": max_final,
         "EOQ_Q": q_final,
         "Reabasto_Sugerido": reabasto_sugerido,
-        "Piso_Evento_Aplicado": piso_evento_aplicado
+        "Piso_Evento_Aplicado": piso_evento_aplicado,
+        "Cap_Cobertura_Aplicado": cap_cobertura_aplicado,
+        "Dias_Max_Cobertura": int(dias_max_cobertura)
     }
