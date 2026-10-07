@@ -66,19 +66,18 @@ def calcular_metricas_inventario(
     lote_operativo = max(lote_base, 1.0)
     max_exacto = pdr_exacto + lote_operativo
     
-    # 2. Protección de Lote Z para Demanda Intermitente / Errática (Release 1.1)
+    # 2. Protección de Lote Z para Demanda Intermitente / Errática
     adi, cv2, z_lote, categoria = 0.0, 0.0, 0.0, "Regular"
     if series_historica is not None and len(series_historica) > 0:
         adi, cv2, z_lote, categoria = clasificar_intermitencia(series_historica)
         
-        # Si el producto es Intermitente, Errático o Lumpy, aseguramos cobertura por Lote Z
         if categoria in ["Intermitente", "Errática", "Irregular (Lumpy)"]:
             pdr_exacto = max(pdr_exacto, z_lote)
             lote_operativo = max(lote_operativo, z_lote)
             max_exacto = pdr_exacto + lote_operativo
             ss_exacto = max(ss_exacto, pdr_exacto - demanda_lt)
 
-    # 3. Regla de Piso por Evento Máximo (Release 1.2)
+    # 3. Regla de Piso por Evento Máximo
     z_redondeado = round(z, 2)
     es_sku_prioritario = z_redondeado in [1.65, 2.05]
     piso_evento_aplicado = False
@@ -95,8 +94,7 @@ def calcular_metricas_inventario(
         except (ValueError, TypeError):
             pass
 
-    # 4. Regla de Techo por Cobertura Máxima de Días (Release 1.3 con Separación de Reabasto)
-    # Politica: Max 90 días para Z in [1.65, 2.05] | Max 30 días para Z in [1.04, 1.28]
+    # 4. Regla de Techo por Cobertura Máxima de Días (Con Garantía de Separación)
     if z_redondeado in [1.04, 1.28]:
         dias_max_cobertura = 30.0
     else:
@@ -134,7 +132,6 @@ def calcular_metricas_inventario(
         q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
 
     # 6. Salvaguarda Absoluta de Separación Obligatoria
-    # "Bajo el máximo solo puede ser igual al pdr cuando ambos sean iguales a 1"
     if max_final > 1 and pdr_final >= max_final:
         paso_separacion = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
         pdr_final = max(1, max_final - paso_separacion)
