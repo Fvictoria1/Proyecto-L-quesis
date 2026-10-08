@@ -1,7 +1,10 @@
 import numpy as np
 
 def clasificar_intermitencia(series_historica):
-    """Calcula ADI, CV2 y tamaño de lote promedio z."""
+    """
+    Calcula ADI, CV2 y tamaño de lote promedio z
+    para la categorización de demanda (Syntetos-Boylan).
+    """
     s = np.array(series_historica, dtype=float)
     nz_indices = np.where(s > 0)[0]
     nz_vals = s[s > 0]
@@ -40,6 +43,7 @@ def calcular_metricas_inventario(
     multiplo_empaque=None,
     evento_maximo=None
 ):
+    # Base de cálculo de demanda diaria (DDP)
     dias_bloque = float(dias_operativos_bloque) if dias_operativos_bloque > 0 else 30.0
     ddp = pronostico_m37 / dias_bloque
     demanda_anual = pronostico_m37 * 12.0
@@ -48,11 +52,13 @@ def calcular_metricas_inventario(
     z = float(nivel_servicio_z)
     demanda_lt = ddp * te
     
-    # 1. Cálculos Tradicionales
+    # -----------------------------------------------------------------
+    # 1. CÁLCULOS TRADICIONALES DE INVENTARIO
+    # -----------------------------------------------------------------
     ss_exacto = z * std_diaria_historica * np.sqrt(te)
     pdr_exacto = demanda_lt + ss_exacto
     
-    # Lote Económico (EOQ)
+    # Lote Económico de Compra (EOQ) si existen parámetros financieros
     q_exacto = None
     if (
         costo_unitario is not None and costo_unitario > 0 and
@@ -66,7 +72,9 @@ def calcular_metricas_inventario(
     lote_operativo = max(lote_base, 1.0)
     max_exacto = pdr_exacto + lote_operativo
     
-    # 2. Protección de Lote Z para Demanda Intermitente / Errática
+    # -----------------------------------------------------------------
+    # 2. PROTECCIÓN POR LOTE Z (DEMANDA INTERMITENTE / ERRÁTICA)
+    # -----------------------------------------------------------------
     adi, cv2, z_lote, categoria = 0.0, 0.0, 0.0, "Regular"
     if series_historica is not None and len(series_historica) > 0:
         adi, cv2, z_lote, categoria = clasificar_intermitencia(series_historica)
@@ -80,7 +88,9 @@ def calcular_metricas_inventario(
     # Registro del Piso Base de Protección (Lead Time + SS)
     pdr_piso_base = max(pdr_exacto, demanda_lt + ss_exacto)
 
-    # 3. Regla de Piso por Evento Máximo
+    # -----------------------------------------------------------------
+    # 3. REGLA DE PISO POR EVENTO MÁXIMO (SKUS PRIORITARIOS)
+    # -----------------------------------------------------------------
     z_redondeado = round(z, 2)
     es_sku_prioritario = z_redondeado in [1.65, 2.05]
     piso_evento_aplicado = False
@@ -98,7 +108,9 @@ def calcular_metricas_inventario(
         except (ValueError, TypeError):
             pass
 
-    # 4. Regla de Techo por Cobertura Máxima con Protección de Piso PDR
+    # -----------------------------------------------------------------
+    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA MÁXIMA (90D / 30D)
+    # -----------------------------------------------------------------
     dias_max_cobertura = 30.0 if z_redondeado in [1.04, 1.28] else 90.0
     tope_maximo_unidades = ddp * dias_max_cobertura
     cap_cobertura_aplicado = False
@@ -115,7 +127,9 @@ def calcular_metricas_inventario(
             
         ss_exacto = max(0.0, pdr_exacto - demanda_lt)
 
-    # 5. Redondeos por Empaque o Enteros
+    # -----------------------------------------------------------------
+    # 5. REDONDEOS POR EMPAQUE O ENTEROS
+    # -----------------------------------------------------------------
     if multiplo_empaque is not None and multiplo_empaque > 0:
         emp = float(multiplo_empaque)
         pdr_final = int(np.ceil(pdr_exacto / emp) * emp) if pdr_exacto > 0 else 0
@@ -128,23 +142,39 @@ def calcular_metricas_inventario(
         ss_final = int(np.ceil(ss_exacto))
         q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
 
-    # 6. REGLAS DE PISO Y SEPARACIÓN DEL PDR
-    # A) REGLA DE ORO: Si Stock_Maximo > 0, PDR NUNCA puede ser 0
-    if max_final > 0 and pdr_final < 1:
+    # -----------------------------------------------------------------
+    # 6. REGLAS DE PISO, SEPARACIÓN Y GUARDIÁN FINAL DEL PDR
+    # -----------------------------------------------------------------
+    paso_min = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
+
+    # CASO A: Excepción de Pieza Única (Max = 1)
+    if max_final == 1:
         pdr_final = 1
 
-    # B) Piso Operativo para Sucursal (Si Max >= 4, PDR >= ceil(0.33 * Max) o 2)
-    if max_final >= 4:
-        pdr_piso_operativo = max(2, int(np.ceil(0.33 * max_final)))
-        if pdr_final < pdr_piso_operativo:
-            pdr_final = pdr_piso_operativo
+    # CASO B: Inventario de Stock Máximo > 1
+    elif max_final > 1:
+        # 1. Salvaguarda de Separación Obligatoria (PDR < Stock Máximo)
+        if pdr_final >= max_final:
+            pdr_final = max_final - paso_min
+            
+        # 2. Piso Operativo Anti-Stockout para Sucursales (Si Max >= 4)
+        if max_final >= 4:
+            pdr_piso_operativo = max(2, int(np.ceil(0.33 * max_final)))
+            if pdr_final < pdr_piso_operativo:
+                pdr_final = pdr_piso_operativo
 
-    # C) Salvaguarda Absoluta de Separación Obligatoria (PDR < Max cuando Max > 1)
+    # GUARDIÁN FINAL (Regla de Oro Absoluta):
+    # Si Stock_Maximo > 0, PDR jamás puede ser 0
+    if max_final > 0 and pdr_final < 1:
+        pdr_final = 1
+        
+    # Garantía final de coherencia de límites
     if max_final > 1 and pdr_final >= max_final:
-        paso_separacion = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
-        pdr_final = max(1, max_final - paso_separacion)
+        pdr_final = max(1, max_final - 1)
 
-    # 7. Reabasto Sugerido Neto
+    # -----------------------------------------------------------------
+    # 7. REABASTO SUGERIDO NETO
+    # -----------------------------------------------------------------
     reabasto_sugerido = None
     if inventario_actual is not None:
         inv_act = float(inventario_actual)
