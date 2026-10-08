@@ -108,8 +108,6 @@ def calcular_metricas_inventario(
         max_exacto = tope_maximo_unidades
         
         paso_min = float(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1.0
-        
-        # Mantenemos PDR protegido por el piso base sin permitir que el recorte del tope lo colapse por debajo
         pdr_exacto = min(max_exacto - paso_min, pdr_piso_base)
         
         if pdr_exacto < (demanda_lt + ss_exacto) and max_exacto > demanda_lt:
@@ -130,13 +128,18 @@ def calcular_metricas_inventario(
         ss_final = int(np.ceil(ss_exacto))
         q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
 
-    # 6. PISO INFERIOR DE SEGURIDAD OPERATIVA PDR (Protección Anti-Stockout en Sucursal)
+    # 6. REGLAS DE PISO Y SEPARACIÓN DEL PDR
+    # A) REGLA DE ORO: Si Stock_Maximo > 0, PDR NUNCA puede ser 0
+    if max_final > 0 and pdr_final < 1:
+        pdr_final = 1
+
+    # B) Piso Operativo para Sucursal (Si Max >= 4, PDR >= ceil(0.33 * Max) o 2)
     if max_final >= 4:
         pdr_piso_operativo = max(2, int(np.ceil(0.33 * max_final)))
         if pdr_final < pdr_piso_operativo:
             pdr_final = pdr_piso_operativo
 
-    # Salvaguarda Absoluta de Separación Obligatoria
+    # C) Salvaguarda Absoluta de Separación Obligatoria (PDR < Max cuando Max > 1)
     if max_final > 1 and pdr_final >= max_final:
         paso_separacion = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
         pdr_final = max(1, max_final - paso_separacion)
