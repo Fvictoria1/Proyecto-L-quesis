@@ -1,4 +1,17 @@
 import numpy as np
+import pandas as pd
+
+
+def _safe_float(val):
+    """Convierte de forma segura valores de Excel (pd.NA, strings, None, NaNs) a float o None."""
+    if val is None or pd.isna(val):
+        return None
+    try:
+        f = float(val)
+        return f if not np.isnan(f) else None
+    except (ValueError, TypeError):
+        return None
+
 
 def clasificar_intermitencia(series_historica):
     """
@@ -45,6 +58,22 @@ def calcular_metricas_inventario(
     multiplo_empaque=None,
     evento_maximo=None
 ):
+    # Sanitización de tipos contra pd.NA, NaNs, strings ("N/D") o Nones
+    pronostico_m37 = _safe_float(pronostico_m37) or 0.0
+    dias_operativos_bloque = _safe_float(dias_operativos_bloque) or 30.0
+    tiempo_entrega_dias = _safe_float(tiempo_entrega_dias) or 5.0
+    nivel_servicio_z = _safe_float(nivel_servicio_z) or 1.65
+    std_diaria_historica = _safe_float(std_diaria_historica) or 0.0
+    
+    inventario_actual = _safe_float(inventario_actual)
+    stock_maximo_actual = _safe_float(stock_maximo_actual)
+    pdr_actual = _safe_float(pdr_actual)
+    costo_unitario = _safe_float(costo_unitario)
+    tasa_mantenimiento_anual = _safe_float(tasa_mantenimiento_anual)
+    costo_ordenar = _safe_float(costo_ordenar)
+    multiplo_empaque = _safe_float(multiplo_empaque)
+    evento_maximo = _safe_float(evento_maximo)
+
     dias_bloque = float(dias_operativos_bloque) if dias_operativos_bloque > 0 else 30.0
     ddp = pronostico_m37 / dias_bloque
     demanda_anual = pronostico_m37 * 12.0
