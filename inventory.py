@@ -194,31 +194,35 @@ def calcular_metricas_inventario(
     if max_final > 1 and pdr_final >= max_final:
         pdr_final = max(1, max_final - 1)
 
-    # -----------------------------------------------------------------
-    # 7. CANDADO OPERATIVO DE DESCENSO SEGÚN AUDITORÍA
+# -----------------------------------------------------------------
+    # 7. REGLAS DE AUDITORÍA Y CANDADO OPERATIVO (CORREGIDO)
     # -----------------------------------------------------------------
     estatus_auditoria = "OK"
     umbral_colapso = 2.0 if es_sku_prioritario else 5.0
     pct_etiqueta = "200%" if es_sku_prioritario else "500%"
+    candado_activado = False
 
-    if stock_maximo_actual is not None and stock_maximo_actual > 0:
+    # 7.1 VERIFICACIÓN INDEPENDIENTE DE INVENTARIO FANTASMA (PRIORIDAD ALTA)
+    if series_historica is not None and len(series_historica) >= 6:
+        ventas_ultimos_3m = np.sum(series_historica[-3:])
+        # Si no se ha vendido nada en 3 meses, y el ERP marca que sí tenemos stock físico:
+        if ventas_ultimos_3m == 0 and (inventario_actual is not None and float(inventario_actual) > 0):
+            estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
+            candado_activado = True
+
+    # 7.2 VERIFICACIÓN DE COLAPSO EXTREMO DE STOCK (Si no es fantasma)
+    if not candado_activado and stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
         ratio_colapso = float(stock_maximo_actual) / max(1.0, float(max_final))
-        
         if ratio_colapso >= umbral_colapso:
-            if series_historica is not None and len(series_historica) >= 6:
-                ventas_ultimos_3m = np.sum(series_historica[-3:])
-                if ventas_ultimos_3m == 0 and (inventario_actual is not None and inventario_actual > 0):
-                    estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
-                else:
-                    estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
-            else:
-                estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
-            
-            # CANDADO OPERATIVO: Retener parámetros actuales del ERP si se activa "A REVISIÓN"
-            if stock_maximo_actual is not None and stock_maximo_actual > 0:
-                max_final = int(stock_maximo_actual)
-            if pdr_actual is not None and pdr_actual > 0:
-                pdr_final = int(pdr_actual)
+            estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
+            candado_activado = True
+
+    # 7.3 ACCIONAR EL CANDADO: Retener parámetros del ERP
+    if candado_activado:
+        if stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
+            max_final = int(stock_maximo_actual)
+        if pdr_actual is not None and float(pdr_actual) > 0:
+            pdr_final = int(pdr_actual)
 
     # -----------------------------------------------------------------
     # 8. REABASTO SUGERIDO NETO
