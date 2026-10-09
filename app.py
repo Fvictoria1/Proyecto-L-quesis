@@ -256,7 +256,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.3.5 &bull; Release Producción
+    Motor Láquesis v1.3.6 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -373,7 +373,7 @@ else:
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 36px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 18px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.3.5
+Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.3.6
 </p>
 <div style="color: #94A3B8; font-size: 15px; max-width: 700px; margin: 0 auto 35px auto; line-height: 1.6;">
 Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
@@ -431,7 +431,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.3.5)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.3.6)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -545,10 +545,10 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
         df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
         
         if df_res is not None:
-            st.success("🎉 ¡Procesamiento v1.3.5 completado!")
+            st.success("🎉 ¡Procesamiento v1.3.6 completado!")
             
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.3.5)")
+            st.subheader("📋 Resumen General de Resultados (v1.3.6)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
