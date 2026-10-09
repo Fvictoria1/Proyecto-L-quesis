@@ -17,29 +17,33 @@ def generar_plantilla_excel(ruta_salida="Plantilla_Carga_Forecasting.xlsx"):
         "SKU", "Dias_Operativos_Bloque", "Tiempo_Entrega_Dias", "Nivel_Servicio_Deseado"
     ]
     cols_opcionales = [
-        "Descripcion", "Inventario_Actual", "Costo_Unitario", 
-        "Tasa_Mantenimiento_Anual", "Costo_Ordenar", "Multiplo_Empaque", "Evento_Maximo"
+        "Descripcion", "Inventario_Actual", "Stock_Maximo_Actual", "PDR_Actual",
+        "Costo_Unitario", "Tasa_Mantenimiento_Anual", "Costo_Ordenar", 
+        "Multiplo_Empaque", "Evento_Maximo"
     ]
     cols_historico = [f"M{i:02d}" for i in range(1, 37)]
     
-    headers = ["SKU", "Descripcion", "Dias_Operativos_Bloque", "Tiempo_Entrega_Dias", 
-               "Nivel_Servicio_Deseado", "Inventario_Actual", "Costo_Unitario", 
-               "Tasa_Mantenimiento_Anual", "Costo_Ordenar", "Multiplo_Empaque", "Evento_Maximo"] + cols_historico
+    headers = [
+        "SKU", "Descripcion", "Dias_Operativos_Bloque", "Tiempo_Entrega_Dias", 
+        "Nivel_Servicio_Deseado", "Inventario_Actual", "Stock_Maximo_Actual", "PDR_Actual",
+        "Costo_Unitario", "Tasa_Mantenimiento_Anual", "Costo_Ordenar", 
+        "Multiplo_Empaque", "Evento_Maximo"
+    ] + cols_historico
 
     ws_datos.append(headers)
 
-    # Datos de ejemplo (SKUs analizados previamente con Evento_Maximo opcional)
-    ejemplo_1 = [1394000, "Faro Halógeno H4", 30, 5, 1.65, 12, 6.10, 0.10, 1.00, 50, 450] + [
+    # Datos de ejemplo (SKUs analizados con los nuevos parámetros del ERP)
+    ejemplo_1 = [1394000, "Faro Halógeno H4", 30, 5, 1.65, 12, 450, 280, 6.10, 0.10, 1.00, 50, 450] + [
         0, 0, 0, 0, 0, 241, 322, 296, 246, 339, 390, 225, 794, 297, 282, 422, 
         212, 274, 120, 249, 271, 513, 338, 343, 154, 708, 235, 310, 154, 199, 
         205, 225, 211, 333, 342, 298
     ]
-    ejemplo_2 = [1974400, "Faro Incandescente", 30, 5, 1.65, 5, 6.16, 0.10, 1.00, 50, None] + [
+    ejemplo_2 = [1974400, "Faro Incandescente", 30, 5, 1.65, 5, 200, 120, 6.16, 0.10, 1.00, 50, None] + [
         0, 0, 0, 0, 0, 109, 230, 94, 141, 183, 88, 123, 108, 201, 114, 168, 
         58, 167, 38, 62, 25, 58, 104, 132, 63, 82, 156, 71, 116, 109, 
         48, 123, 140, 196, 87, 67
     ]
-    ejemplo_3 = [6203023, "Foco Auxiliar LED", 30, 5, 1.65, 0, 2.50, None, None, None, None] + [
+    ejemplo_3 = [6203023, "Foco Auxiliar LED", 30, 5, 1.65, 0, 50, 25, 2.50, None, None, None, None] + [
         0, 0, 0, 0, 0, 1, 1, 4, 7, 12, 10, 7, 2, 9, 10, 0, 0, 5, 2, 29, 
         5, 1, 4, 2, 2, 1, 1, 5, 1, 1, 0, 12, 56, 25, 10, 3
     ]
@@ -95,8 +99,10 @@ def generar_plantilla_excel(ruta_salida="Plantilla_Carga_Forecasting.xlsx"):
         ("Descripcion", "Opcional", "Nombre o detalle comercial del producto."),
         ("Dias_Operativos_Bloque", "Obligatorio", "Días hábiles del periodo base (30 = mes, 15 = quincena, 7 = semana)."),
         ("Tiempo_Entrega_Dias", "Obligatorio", "Lead Time del proveedor en días corridos/operativos."),
-        ("Nivel_Servicio_Deseado", "Obligatorio", "Coeficiente Z deseado (1.65 = 95%, 2.05 = 98%, 1.28 = 90%)."),
-        ("Inventario_Actual", "Opcional", "Stock disponible. Si se llena, calcula la sugerencia de reabasto neto."),
+        ("Nivel_Servicio_Deseado", "Obligatorio", "Coeficiente Z deseado (1.65 = 95%, 2.05 = 98%, 1.28 = 90%, 1.04 = 85%)."),
+        ("Inventario_Actual", "Opcional", "Stock disponible en sistema (ERP). Si se llena, calcula el reabasto sugerido neto."),
+        ("Stock_Maximo_Actual", "Opcional", "Stock Máximo parametrizado actualmente en el ERP. Usado para auditar reducciones drásticas (>200% en Z alta prioridad o >500% en Z estándar)."),
+        ("PDR_Actual", "Opcional", "Punto de Reorden parametrizado actualmente en el ERP."),
         ("Costo_Unitario", "Opcional", "Costo de compra unitario. Requerido si se calculará Lote Económico (Q*)."),
         ("Tasa_Mantenimiento_Anual", "Opcional", "Porcentaje decimal (ej. 0.10). Si no se entrega junto con Costo_Ordenar, se omite Q*."),
         ("Costo_Ordenar", "Opcional", "Costo por emisión de orden. Si no se entrega junto con Tasa, se omite Q*."),

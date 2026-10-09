@@ -37,13 +37,14 @@ def calcular_metricas_inventario(
     std_diaria_historica,
     series_historica=None,
     inventario_actual=None,
+    stock_maximo_actual=None,
+    pdr_actual=None,
     costo_unitario=None,
     tasa_mantenimiento_anual=None,
     costo_ordenar=None,
     multiplo_empaque=None,
     evento_maximo=None
 ):
-    # Base de cálculo de demanda diaria (DDP)
     dias_bloque = float(dias_operativos_bloque) if dias_operativos_bloque > 0 else 30.0
     ddp = pronostico_m37 / dias_bloque
     demanda_anual = pronostico_m37 * 12.0
@@ -58,7 +59,6 @@ def calcular_metricas_inventario(
     ss_exacto = z * std_diaria_historica * np.sqrt(te)
     pdr_exacto = demanda_lt + ss_exacto
     
-    # Lote Económico de Compra (EOQ) si existen parámetros financieros
     q_exacto = None
     if (
         costo_unitario is not None and costo_unitario > 0 and
@@ -85,11 +85,10 @@ def calcular_metricas_inventario(
             max_exacto = pdr_exacto + lote_operativo
             ss_exacto = max(ss_exacto, pdr_exacto - demanda_lt)
 
-    # Registro del Piso Base de Protección (Lead Time + SS)
     pdr_piso_base = max(pdr_exacto, demanda_lt + ss_exacto)
 
     # -----------------------------------------------------------------
-    # 3. REGLA DE PISO POR EVENTO MÁXIMO (SKUS PRIORITARIOS)
+    # 3. REGLA DE PISO POR EVENTO MÁXIMO
     # -----------------------------------------------------------------
     z_redondeado = round(z, 2)
     es_sku_prioritario = z_redondeado in [1.65, 2.05]
@@ -147,33 +146,50 @@ def calcular_metricas_inventario(
     # -----------------------------------------------------------------
     paso_min = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
 
-    # CASO A: Excepción de Pieza Única (Max = 1)
     if max_final == 1:
         pdr_final = 1
 
-    # CASO B: Inventario de Stock Máximo > 1
     elif max_final > 1:
-        # 1. Salvaguarda de Separación Obligatoria (PDR < Stock Máximo)
         if pdr_final >= max_final:
             pdr_final = max_final - paso_min
             
-        # 2. Piso Operativo Anti-Stockout para Sucursales (Si Max >= 4)
         if max_final >= 4:
             pdr_piso_operativo = max(2, int(np.ceil(0.33 * max_final)))
             if pdr_final < pdr_piso_operativo:
                 pdr_final = pdr_piso_operativo
 
-    # GUARDIÁN FINAL (Regla de Oro Absoluta):
-    # Si Stock_Maximo > 0, PDR jamás puede ser 0
     if max_final > 0 and pdr_final < 1:
         pdr_final = 1
         
-    # Garantía final de coherencia de límites
     if max_final > 1 and pdr_final >= max_final:
         pdr_final = max(1, max_final - 1)
 
     # -----------------------------------------------------------------
-    # 7. REABASTO SUGERIDO NETO
+    # 7. CANDADO DINÁMICO SEGÚN NIVEL DE SERVICIO (Z)
+    # -----------------------------------------------------------------
+    estatus_auditoria = "OK"
+    
+    # Sensibilidad diferenciada:
+    # - Z = 1.65 / 2.05 (Alta Prioridad): Candado al 200% (Ratio >= 2.0)
+    # - Z = 1.04 / 1.28 (Estándar): Candado al 500% (Ratio >= 5.0)
+    umbral_colapso = 2.0 if es_sku_prioritario else 5.0
+    pct_etiqueta = "200%" if es_sku_prioritario else "500%"
+
+    if stock_maximo_actual is not None and stock_maximo_actual > 0:
+        ratio_colapso = float(stock_maximo_actual) / max(1.0, float(max_final))
+        
+        if ratio_colapso >= umbral_colapso:
+            if series_historica is not None and len(series_historica) >= 6:
+                ventas_ultimos_3m = np.sum(series_historica[-3:])
+                if ventas_ultimos_3m == 0 and (inventario_actual is not None and inventario_actual > 0):
+                    estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
+                else:
+                    estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
+            else:
+                estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
+
+    # -----------------------------------------------------------------
+    # 8. REABASTO SUGERIDO NETO
     # -----------------------------------------------------------------
     reabasto_sugerido = None
     if inventario_actual is not None:
@@ -201,5 +217,6 @@ def calcular_metricas_inventario(
         "Reabasto_Sugerido": reabasto_sugerido,
         "Piso_Evento_Aplicado": piso_evento_aplicado,
         "Cap_Cobertura_Aplicado": cap_cobertura_aplicado,
-        "Dias_Max_Cobertura": int(dias_max_cobertura)
+        "Dias_Max_Cobertura": int(dias_max_cobertura),
+        "Estatus_Auditoria": estatus_auditoria
     }

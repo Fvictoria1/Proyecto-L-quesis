@@ -256,7 +256,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.3.0 &bull; Release Producción
+    Motor Láquesis v1.3.5 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -373,10 +373,10 @@ else:
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 36px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 18px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.3
+Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.3.5
 </p>
 <div style="color: #94A3B8; font-size: 15px; max-width: 700px; margin: 0 auto 35px auto; line-height: 1.6;">
-Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo y Techo Supremo de Cobertura por Días (90d / 30d).
+Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura por Días (90d / 30d) y Candado de Auditoría Dinámico por Nivel de Servicio.
 </div>
 <div style="background-color: #1A1F26; border: 1px dashed #00E5FF; border-radius: 12px; padding: 30px; max-width: 650px; margin: 0 auto;">
 <div style="color: #FFFFFF; font-size: 20px; font-weight: 700; margin-bottom: 8px;">
@@ -431,7 +431,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.3)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.3.5)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -453,6 +453,12 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                     inv_act = row.get("Inventario_Actual", None)
                     inv_act = float(inv_act) if pd.notna(inv_act) else None
                     
+                    stk_max_act = row.get("Stock_Maximo_Actual", None)
+                    stk_max_act = float(stk_max_act) if pd.notna(stk_max_act) else None
+                    
+                    pdr_act = row.get("PDR_Actual", None)
+                    pdr_act = float(pdr_act) if pd.notna(pdr_act) else None
+                    
                     costo_u = row.get("Costo_Unitario", None)
                     costo_u = float(costo_u) if pd.notna(costo_u) else None
                     
@@ -465,7 +471,6 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                     mult_e = row.get("Multiplo_Empaque", None)
                     mult_e = float(mult_e) if pd.notna(mult_e) else None
                     
-                    # Lectura opcional de Evento_Maximo
                     evt_max = row.get("Evento_Maximo", None)
                     evt_max = float(evt_max) if pd.notna(evt_max) else None
                     
@@ -496,6 +501,8 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                         std_diaria_historica=std_diaria,
                         series_historica=series_val,
                         inventario_actual=inv_act,
+                        stock_maximo_actual=stk_max_act,
+                        pdr_actual=pdr_act,
                         costo_unitario=costo_u,
                         tasa_mantenimiento_anual=tasa_m,
                         costo_ordenar=costo_o,
@@ -514,13 +521,16 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                         "Puntaje_Modelo": round(puntaje, 2),
                         "Pronostico_M37": round(p_m37, 2),
                         "Demanda_Diaria_DDP": round(res_inv["DDP"], 2),
+                        "Stock_Max_Actual": stk_max_act if stk_max_act is not None else "N/D",
+                        "PDR_Actual": pdr_act if pdr_act is not None else "N/D",
                         "Stock_Seguridad_SS": res_inv["SS"],
                         "Punto_Reorden_PDR": res_inv["PDR"],
                         "Ajuste_Piso_Evento": "🛡️ SÍ (Ajustado)" if res_inv.get("Piso_Evento_Aplicado", False) else "NO",
                         "Cobertura_Max_Ajustada": label_cobertura,
                         "Stock_Maximo": res_inv["Stock_Maximo"],
-                        "Lote_Economico_Q": res_inv["EOQ_Q"],
-                        "Reabasto_Sugerido": res_inv["Reabasto_Sugerido"]
+                        "Estatus_Auditoria": res_inv.get("Estatus_Auditoria", "OK"),
+                        "Lote_Economico_Q": res_inv["EOQ_Q"] if res_inv["EOQ_Q"] is not None else "None",
+                        "Reabasto_Sugerido": res_inv["Reabasto_Sugerido"] if res_inv["Reabasto_Sugerido"] is not None else "None"
                     }
                     resultados_totales.append(fila_res)
                     progress_bar.progress((idx + 1) / total_skus)
@@ -531,14 +541,14 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 st.session_state["detalle_competencia"] = detalle_competencia_dict
                 st.rerun()
 
-        # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN (Usando tus llaves exactas)
+        # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
         df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
         
         if df_res is not None:
-            st.success("🎉 ¡Procesamiento v1.3 completado!")
+            st.success("🎉 ¡Procesamiento v1.3.5 completado!")
             
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.3)")
+            st.subheader("📋 Resumen General de Resultados (v1.3.5)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
@@ -590,6 +600,11 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                     render_kpi_card("Stock Máximo", f"{row_res['Stock_Maximo']} uds")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
+                
+                # Banner informativo si se activó el Candado de Auditoría
+                estatus_aud = str(row_res.get("Estatus_Auditoria", "OK"))
+                if "A REVISIÓN" in estatus_aud:
+                    st.error(f"🚨 **Candado de Auditoría Activado ({estatus_aud}):** La propuesta del modelo representa una reducción extrema sobre el Stock Máximo configurado en el ERP ({row_res.get('Stock_Max_Actual', 'N/D')} uds). Se requiere validación física en almacén.")
                 
                 # Banner informativo si aplicó la regla de piso
                 if row_res.get("Ajuste_Piso_Evento") == "🛡️ SÍ (Ajustado)":
