@@ -376,7 +376,7 @@ else:
 Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.3.5
 </p>
 <div style="color: #94A3B8; font-size: 15px; max-width: 700px; margin: 0 auto 35px auto; line-height: 1.6;">
-Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura por Días (90d / 30d) y Candado de Auditoría Dinámico por Nivel de Servicio.
+Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
 </div>
 <div style="background-color: #1A1F26; border: 1px dashed #00E5FF; border-radius: 12px; padding: 30px; max-width: 650px; margin: 0 auto;">
 <div style="color: #FFFFFF; font-size: 20px; font-weight: 700; margin-bottom: 8px;">

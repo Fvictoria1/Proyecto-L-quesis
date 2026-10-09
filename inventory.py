@@ -137,9 +137,9 @@ def calcular_metricas_inventario(
             pass
 
     # -----------------------------------------------------------------
-    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA MÁXIMA (90D / 30D)
+    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA MÁXIMA (HOMOLOGADO A 90 DÍAS)
     # -----------------------------------------------------------------
-    dias_max_cobertura = 30.0 if z_redondeado in [1.04, 1.28] else 90.0
+    dias_max_cobertura = 90.0  # Homologado para cualquier Nivel de Servicio (Z)
     tope_maximo_unidades = ddp * dias_max_cobertura
     cap_cobertura_aplicado = False
 
