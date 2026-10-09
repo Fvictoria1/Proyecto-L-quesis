@@ -137,10 +137,11 @@ def calcular_metricas_inventario(
             pass
 
     # -----------------------------------------------------------------
-    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA MÁXIMA (HOMOLOGADO A 90 DÍAS)
+    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA (RESPETANDO LOTE Z)
     # -----------------------------------------------------------------
-    dias_max_cobertura = 90.0  # Homologado para cualquier Nivel de Servicio (Z)
-    tope_maximo_unidades = ddp * dias_max_cobertura
+    dias_max_cobertura = 90.0
+    piso_cobertura_lote = z_lote if (categoria in ["Intermitente", "Errática", "Irregular (Lumpy)"] and z_lote > 0) else 0.0
+    tope_maximo_unidades = max(ddp * dias_max_cobertura, piso_cobertura_lote)
     cap_cobertura_aplicado = False
 
     if max_exacto > tope_maximo_unidades and ddp > 0:
@@ -194,13 +195,9 @@ def calcular_metricas_inventario(
         pdr_final = max(1, max_final - 1)
 
     # -----------------------------------------------------------------
-    # 7. CANDADO DINÁMICO SEGÚN NIVEL DE SERVICIO (Z)
+    # 7. CANDADO OPERATIVO DE DESCENSO SEGÚN AUDITORÍA
     # -----------------------------------------------------------------
     estatus_auditoria = "OK"
-    
-    # Sensibilidad diferenciada:
-    # - Z = 1.65 / 2.05 (Alta Prioridad): Candado al 200% (Ratio >= 2.0)
-    # - Z = 1.04 / 1.28 (Estándar): Candado al 500% (Ratio >= 5.0)
     umbral_colapso = 2.0 if es_sku_prioritario else 5.0
     pct_etiqueta = "200%" if es_sku_prioritario else "500%"
 
@@ -216,6 +213,12 @@ def calcular_metricas_inventario(
                     estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
             else:
                 estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
+            
+            # CANDADO OPERATIVO: Retener parámetros actuales del ERP si se activa "A REVISIÓN"
+            if stock_maximo_actual is not None and stock_maximo_actual > 0:
+                max_final = int(stock_maximo_actual)
+            if pdr_actual is not None and pdr_actual > 0:
+                pdr_final = int(pdr_actual)
 
     # -----------------------------------------------------------------
     # 8. REABASTO SUGERIDO NETO
