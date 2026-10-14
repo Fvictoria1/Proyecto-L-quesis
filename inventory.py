@@ -75,8 +75,18 @@ def calcular_metricas_inventario(
     evento_maximo = _safe_float(evento_maximo)
 
     dias_bloque = float(dias_operativos_bloque) if dias_operativos_bloque > 0 else 30.0
+    
+    # DDP del Pronóstico (Usado para estimar el Lead Time del próximo periodo)
     ddp = pronostico_m37 / dias_bloque
     demanda_anual = pronostico_m37 * 12.0
+    
+    # NUEVO: DDP Histórico (Usado como ancla de realidad para el Techo de Cobertura)
+    if series_historica is not None and len(series_historica) > 0:
+        media_mensual_historica = float(np.mean(series_historica))
+    else:
+        media_mensual_historica = pronostico_m37
+        
+    ddp_historico = media_mensual_historica / dias_bloque
     
     te = float(tiempo_entrega_dias)
     z = float(nivel_servicio_z)
@@ -137,14 +147,17 @@ def calcular_metricas_inventario(
             pass
 
     # -----------------------------------------------------------------
-    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA (RESPETANDO LOTE Z)
+    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA (ANCLADO A LA REALIDAD HISTÓRICA)
     # -----------------------------------------------------------------
     dias_max_cobertura = 90.0
     piso_cobertura_lote = z_lote if (categoria in ["Intermitente", "Errática", "Irregular (Lumpy)"] and z_lote > 0) else 0.0
-    tope_maximo_unidades = max(ddp * dias_max_cobertura, piso_cobertura_lote)
+    
+    # EL CAMBIO MAESTRO DE FRANK: Usar ddp_historico en lugar de ddp(pronóstico)
+    tope_maximo_unidades = max(ddp_historico * dias_max_cobertura, piso_cobertura_lote)
     cap_cobertura_aplicado = False
 
-    if max_exacto > tope_maximo_unidades and ddp > 0:
+    # Condicionamos usando el ddp_historico
+    if max_exacto > tope_maximo_unidades and ddp_historico > 0:
         cap_cobertura_aplicado = True
         max_exacto = tope_maximo_unidades
         
