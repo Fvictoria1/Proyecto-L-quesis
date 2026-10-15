@@ -4,6 +4,8 @@ import numpy as np
 import engine
 import inventory
 import matplotlib.pyplot as plt
+import drive_utils
+from datetime import datetime
 
 # ---------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -115,7 +117,7 @@ div.stButton > button:first-child:hover {
     background-color: #161A20;
     border: 1px solid #232A34;
     border-radius: 12px;
-    padding: 45px 20px;
+    padding: 40px 25px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.3);
     margin-bottom: 25px;
     text-align: center;
@@ -256,7 +258,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.3.6 &bull; Release Producción
+    Motor Láquesis v1.4.0 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -368,40 +370,90 @@ else:
     # -----------------------------------------------------------------
     # WORKSPACE PRINCIPAL
     # -----------------------------------------------------------------
-    if archivo_subido is None:
-        welcome_html = """
+    ya_procesado = ("df_resultados" in st.session_state) or ("df_resultados_v1_1" in st.session_state)
+
+    if archivo_subido is None and not ya_procesado:
+        # REDISEÑO: PANTALLA DE BIENVENIDA + SECCIÓN DERECHA DE HISTORIAL DRIVE
+        col_main, col_historial = st.columns([2.7, 1.3], gap="medium")
+
+        with col_main:
+            welcome_html = """
 <div class="welcome-card">
-<h1 style="color: #FFFFFF; font-size: 36px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
-<p style="color: #00E5FF; font-size: 18px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.3.6
+<h1 style="color: #FFFFFF; font-size: 34px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
+<p style="color: #00E5FF; font-size: 17px; font-weight: 600; margin-bottom: 25px;">
+Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.0
 </p>
-<div style="color: #94A3B8; font-size: 15px; max-width: 700px; margin: 0 auto 35px auto; line-height: 1.6;">
+<div style="color: #94A3B8; font-size: 14px; max-width: 680px; margin: 0 auto 30px auto; line-height: 1.6;">
 Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
 </div>
-<div style="background-color: #1A1F26; border: 1px dashed #00E5FF; border-radius: 12px; padding: 30px; max-width: 650px; margin: 0 auto;">
-<div style="color: #FFFFFF; font-size: 20px; font-weight: 700; margin-bottom: 8px;">
+<div style="background-color: #1A1F26; border: 1px dashed #00E5FF; border-radius: 12px; padding: 25px; max-width: 600px; margin: 0 auto;">
+<div style="color: #FFFFFF; font-size: 18px; font-weight: 700; margin-bottom: 8px;">
 👈 ¡Carga tus datos para comenzar!
 </div>
-<div style="color: #64748B; font-size: 14px;">
-Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo de Excel.
+<div style="color: #64748B; font-size: 13px;">
+Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o selecciona una corrida previa del historial en la derecha.
 </div>
 </div>
 </div>
 """
-        st.markdown(welcome_html, unsafe_allow_html=True)
+            st.markdown(welcome_html, unsafe_allow_html=True)
+
+        with col_historial:
+            st.markdown("""
+<div style="background-color: #161A20; border: 1px solid #232A34; border-radius: 12px; padding: 18px; min-height: 460px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+    <div style="color: #00E5FF; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #232A34; padding-bottom: 10px;">
+        ☁️ Historial en Drive (Últimos 5)
+    </div>
+""", unsafe_allow_html=True)
+
+            try:
+                archivos_drive = drive_utils.listar_historial_drive()
+            except Exception as e:
+                archivos_drive = []
+                st.caption(f"⚠️ Sin conexión a Drive: {e}")
+
+            if not archivos_drive:
+                st.markdown("""
+<div style="text-align: center; color: #64748B; font-size: 12px; margin-top: 40px; line-height: 1.5;">
+    No hay pronósticos respaldados aún.<br><br>
+    Al procesar un lote, el resultado se guardará automáticamente en Google Drive.
+</div>
+""", unsafe_allow_html=True)
+            else:
+                for idx_f, f in enumerate(archivos_drive):
+                    nombre_f = f.get('name', 'Resultados.csv')
+                    file_id = f.get('id')
+                    try:
+                        partes = nombre_f.replace(".csv", "").split("_")
+                        fecha_raw = f"{partes[-2]} {partes[-1]}"
+                        dt_obj = datetime.strptime(fecha_raw, "%Y%m%d %H%M%S")
+                        fecha_fmt = dt_obj.strftime("%d %b %Y, %H:%M")
+                        label_btn = f"📄 {fecha_fmt}"
+                    except Exception:
+                        label_btn = f"📄 {nombre_f[:25]}"
+
+                    if st.button(label_btn, key=f"btn_drive_{file_id}_{idx_f}", use_container_width=True):
+                        with st.spinner("Descargando resultado desde Google Drive..."):
+                            df_hist = drive_utils.descargar_csv_drive(file_id)
+                            if df_hist is not None:
+                                st.session_state["df_resultados"] = df_hist
+                                st.rerun()
+                            else:
+                                st.error("❌ No se pudo recuperar el archivo.")
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
     else:
-        try:
-            df_input = pd.read_excel(archivo_subido, sheet_name="Carga_Datos")
-        except Exception:
-            df_input = pd.read_excel(archivo_subido)
-            
-        df_input["SKU_norm"] = df_input["SKU"].apply(normalizar_sku)
-            
-        st.success(f"✅ Archivo cargado correctamente: **{len(df_input)} SKUs** detectados.")
-        
-        ya_procesado = ("df_resultados" in st.session_state) or ("df_resultados_v1_1" in st.session_state)
-        
+        # SI HAY UN ARCHIVO SUBIDO O RESULTADOS EN SESIÓN
+        if archivo_subido is not None and not ya_procesado:
+            try:
+                df_input = pd.read_excel(archivo_subido, sheet_name="Carga_Datos")
+            except Exception:
+                df_input = pd.read_excel(archivo_subido)
+                
+            df_input["SKU_norm"] = df_input["SKU"].apply(normalizar_sku)
+            st.success(f"✅ Archivo cargado correctamente: **{len(df_input)} SKUs** detectados.")
+
         if st.session_state["confirmar_limpieza"]:
             st.markdown("""
 <div class="warning-box">
@@ -431,7 +483,7 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.3.6)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.0)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -539,16 +591,21 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 st.session_state["df_resultados"] = df_resultados
                 st.session_state["df_input"] = df_input
                 st.session_state["detalle_competencia"] = detalle_competencia_dict
+                
+                # GUARDADO AUTOMÁTICO EN GOOGLE DRIVE
+                usuario_act = st.session_state.get('usuario_actual', 'Fvictoria1')
+                drive_utils.guardar_historial_drive(df_resultados, usuario_act)
+                
                 st.rerun()
 
         # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
         df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
         
         if df_res is not None:
-            st.success("🎉 ¡Procesamiento v1.3.6 completado!")
+            st.success("🎉 ¡Procesamiento v1.4.0 completado!")
             
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.3.6)")
+            st.subheader("📋 Resumen General de Resultados (v1.4.0)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
@@ -577,12 +634,8 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
             filtro_res = df_res[df_res["SKU"] == sku_seleccionado]
             filtro_inp = df_inp_state[df_inp_state["SKU_norm"] == sku_seleccionado] if df_inp_state is not None else pd.DataFrame()
             
-            if not filtro_res.empty and not filtro_inp.empty:
+            if not filtro_res.empty:
                 row_res = filtro_res.iloc[0]
-                row_inp = filtro_inp.iloc[0]
-                
-                cols_m = [c for c in df_inp_state.columns if c.startswith("M") and c[1:].isdigit()]
-                serie_hist = row_inp[cols_m].values.astype(float)
                 
                 col1, col2, col3, col4, col5 = st.columns(5)
                 with col1:
@@ -614,37 +667,43 @@ Sigue la guía de 3 pasos en el panel lateral desplegable para cargar tu archivo
                 if "⚠️ Topado" in str(row_res.get("Cobertura_Max_Ajustada", "")):
                     st.warning(f"⚠️ **Techo Supremo de Cobertura Activado:** El Stock Máximo de este SKU fue ajustado para no rebasar la política corporativa de días de inventario ({row_res['Cobertura_Max_Ajustada']}), conservando la brecha de reabasto.")
 
-                x_hist = np.arange(1, 37)
-                
-                media_train = np.mean(serie_hist[:24])
-                np.random.seed(42)
-                backtest_m25_m36 = media_train + (serie_hist[24:36] - media_train) * 0.45
-                
-                x_backtest = np.arange(25, 37)
-                x_m37 = 37
-                val_m37 = float(row_res['Pronostico_M37'])
-                
-                x_pronostico_full = np.append(x_backtest, x_m37)
-                y_pronostico_full = np.append(backtest_m25_m36, val_m37)
-                
-                fig, ax = plt.subplots(figsize=(10, 4.2))
-                fig.patch.set_facecolor("#121519")
-                ax.set_facecolor("#1A1F26")
-                
-                ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.05, label="Ventana Evaluación (M25-M36)")
-                ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", color="#00E5FF", linewidth=2.2, zorder=3)
-                ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
-                        marker="s", linestyle="--", color="#FF2A6D", linewidth=2.2, zorder=4)
-                ax.scatter(x_m37, val_m37, color="#FF2A6D", s=90, edgecolor="#FFFFFF", linewidth=2, zorder=5)
-                
-                ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=12, fontweight='bold')
-                ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8")
-                ax.set_ylabel("Unidades Demanda", color="#94A3B8")
-                ax.set_xticks(np.arange(0, 39, 3))
-                ax.tick_params(colors="#94A3B8")
-                ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left")
-                ax.grid(True, linestyle=":", alpha=0.3, color="#2D3748")
-                
-                st.pyplot(fig)
+                if not filtro_inp.empty:
+                    row_inp = filtro_inp.iloc[0]
+                    cols_m = [c for c in df_inp_state.columns if c.startswith("M") and c[1:].isdigit()]
+                    serie_hist = row_inp[cols_m].values.astype(float)
+                    
+                    x_hist = np.arange(1, 37)
+                    media_train = np.mean(serie_hist[:24])
+                    np.random.seed(42)
+                    backtest_m25_m36 = media_train + (serie_hist[24:36] - media_train) * 0.45
+                    
+                    x_backtest = np.arange(25, 37)
+                    x_m37 = 37
+                    val_m37 = float(row_res['Pronostico_M37'])
+                    
+                    x_pronostico_full = np.append(x_backtest, x_m37)
+                    y_pronostico_full = np.append(backtest_m25_m36, val_m37)
+                    
+                    fig, ax = plt.subplots(figsize=(10, 4.2))
+                    fig.patch.set_facecolor("#121519")
+                    ax.set_facecolor("#1A1F26")
+                    
+                    ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.05, label="Ventana Evaluación (M25-M36)")
+                    ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", color="#00E5FF", linewidth=2.2, zorder=3)
+                    ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
+                            marker="s", linestyle="--", color="#FF2A6D", linewidth=2.2, zorder=4)
+                    ax.scatter(x_m37, val_m37, color="#FF2A6D", s=90, edgecolor="#FFFFFF", linewidth=2, zorder=5)
+                    
+                    ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=12, fontweight='bold')
+                    ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8")
+                    ax.set_ylabel("Unidades Demanda", color="#94A3B8")
+                    ax.set_xticks(np.arange(0, 39, 3))
+                    ax.tick_params(colors="#94A3B8")
+                    ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left")
+                    ax.grid(True, linestyle=":", alpha=0.3, color="#2D3748")
+                    
+                    st.pyplot(fig)
+                else:
+                    st.info("ℹ️ Estás visualizando un resultado histórico desde Google Drive. Carga el Excel original si deseas visualizar el gráfico de la serie de tiempo.")
             else:
                 st.warning(f"⚠️ No se encontraron registros coincidentes para el SKU: `{sku_seleccionado}`.")
