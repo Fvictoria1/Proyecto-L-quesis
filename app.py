@@ -195,7 +195,7 @@ def limpiar_todo():
     keys_a_borrar = [
         "df_resultados", "df_input", "detalle_competencia",
         "df_resultados_v1_1", "df_input_v1_1", "detalle_competencia_v1_1",
-        "ultimo_guardado_msg"
+        "ultimo_guardado_msg", "ultimo_guardado_status"
     ]
     for key in keys_a_borrar:
         if key in st.session_state:
@@ -259,7 +259,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.4.1 &bull; Release Producción
+    Motor Láquesis v1.4.2 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -355,7 +355,6 @@ else:
         key=f"file_uploader_{st.session_state['uploader_key']}"
     )
 
-    # Campo opcional para titular la corrida
     titulo_calculo = st.sidebar.text_input(
         "🏷️ Título del Cálculo (Opcional)",
         placeholder="Ej. Vallejo15.10.26V1",
@@ -364,16 +363,19 @@ else:
 
     ya_procesado = ("df_resultados" in st.session_state) or ("df_resultados_v1_1" in st.session_state)
 
-    # NUEVO: Botón manual para respaldar en Drive si ya está procesado
     if ya_procesado:
         if st.sidebar.button("💾 Guardar / Actualizar en Drive", use_container_width=True):
             df_curr = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
             if df_curr is not None:
                 usuario_act = st.session_state.get('usuario_actual', 'Fvictoria1')
                 titulo_act = st.session_state.get('titulo_calculo_input', '')
-                drive_utils.guardar_historial_drive(df_curr, usuario_act, titulo_act)
-                st.session_state["ultimo_guardado_msg"] = f"🏷️ {titulo_act}" if titulo_act else "Sin Título"
-                st.sidebar.success("✅ Guardado en Google Drive.")
+                exito, msg = drive_utils.guardar_historial_drive(df_curr, usuario_act, titulo_act)
+                st.session_state["ultimo_guardado_status"] = exito
+                st.session_state["ultimo_guardado_msg"] = f"🏷️ {titulo_act}" if exito else msg
+                if exito:
+                    st.sidebar.success("✅ Guardado en Google Drive.")
+                else:
+                    st.sidebar.error(f"❌ {msg}")
                 st.rerun()
 
     st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
@@ -393,7 +395,6 @@ else:
     # WORKSPACE PRINCIPAL
     # -----------------------------------------------------------------
     if archivo_subido is None and not ya_procesado:
-        # PANTALLA DE BIENVENIDA + SECCIÓN DERECHA DE HISTORIAL DRIVE
         col_main, col_historial = st.columns([2.7, 1.3], gap="medium")
 
         with col_main:
@@ -401,7 +402,7 @@ else:
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 34px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 17px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.1
+Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.2
 </p>
 <div style="color: #94A3B8; font-size: 14px; max-width: 680px; margin: 0 auto 30px auto; line-height: 1.6;">
 Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
@@ -428,11 +429,14 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
 
             try:
                 archivos_drive = drive_utils.listar_historial_drive()
+                err_drive = None
             except Exception as e:
                 archivos_drive = []
-                st.caption(f"⚠️ Sin conexión a Drive: {e}")
+                err_drive = str(e)
 
-            if not archivos_drive:
+            if err_drive:
+                st.error(f"🚨 **Error de Conexión:**\n{err_drive}")
+            elif not archivos_drive:
                 st.markdown("""
 <div style="text-align: center; color: #64748B; font-size: 12px; margin-top: 40px; line-height: 1.5;">
     No hay pronósticos respaldados aún.<br><br>
@@ -470,7 +474,6 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
             st.markdown("</div>", unsafe_allow_html=True)
 
     else:
-        # SI HAY UN ARCHIVO SUBIDO O RESULTADOS EN SESIÓN
         if archivo_subido is not None and not ya_procesado:
             try:
                 df_input = pd.read_excel(archivo_subido, sheet_name="Carga_Datos")
@@ -509,7 +512,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.1)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.2)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -618,11 +621,12 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 st.session_state["df_input"] = df_input
                 st.session_state["detalle_competencia"] = detalle_competencia_dict
                 
-                # GUARDADO AUTOMÁTICO EN GOOGLE DRIVE CON TÍTULO
+                # GUARDADO AUTOMÁTICO EN GOOGLE DRIVE
                 usuario_act = st.session_state.get('usuario_actual', 'Fvictoria1')
                 titulo_act = st.session_state.get('titulo_calculo_input', '')
-                drive_utils.guardar_historial_drive(df_resultados, usuario_act, titulo_act)
-                st.session_state["ultimo_guardado_msg"] = f"🏷️ {titulo_act}" if titulo_act else "Sin Título"
+                exito, msg = drive_utils.guardar_historial_drive(df_resultados, usuario_act, titulo_act)
+                st.session_state["ultimo_guardado_status"] = exito
+                st.session_state["ultimo_guardado_msg"] = f"🏷️ {titulo_act}" if exito else msg
                 
                 st.rerun()
 
@@ -630,12 +634,17 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
         df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
         
         if df_res is not None:
-            st.success("🎉 ¡Procesamiento v1.4.1 completado!")
+            st.success("🎉 ¡Procesamiento v1.4.2 completado!")
             
-            # BANNER DE CONFIRMACIÓN DE GUARDADO EN GOOGLE DRIVE
+            # BANNER DE CONFIRMACIÓN O ERROR DE GUARDADO EN GOOGLE DRIVE
             msg_guardado = st.session_state.get("ultimo_guardado_msg", None)
+            st_guardado = st.session_state.get("ultimo_guardado_status", True)
+            
             if msg_guardado:
-                st.info(f"☁️ **Respaldo en Google Drive Activo:** {msg_guardado}")
+                if st_guardado:
+                    st.info(f"☁️ **Respaldo en Google Drive Activo:** {msg_guardado}")
+                else:
+                    st.error(f"🚨 **Alerta de Guardado en Drive:** {msg_guardado}")
             
             # ACCESO RÁPIDO AL HISTORIAL EN PANTALLA DE RESULTADOS
             with st.expander("☁️ Ver Historial de Pronósticos Guardados en Google Drive"):
@@ -668,14 +677,15 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                                         if df_hist is not None:
                                             st.session_state["df_resultados"] = df_hist
                                             st.session_state["ultimo_guardado_msg"] = label_btn.replace('\n', ' ')
+                                            st.session_state["ultimo_guardado_status"] = True
                                             st.rerun()
                 except Exception as e:
-                    st.caption(f"Error consultando Drive: {e}")
+                    st.error(f"🚨 Error consultando Drive: {e}")
 
             st.markdown("<br>", unsafe_allow_html=True)
 
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.4.1)")
+            st.subheader("📋 Resumen General de Resultados (v1.4.2)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
