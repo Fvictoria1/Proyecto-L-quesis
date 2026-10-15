@@ -41,17 +41,30 @@ def guardar_historial_drive(df_resultados, usuario="User", titulo=""):
         return False, f"Error de conexión: {str(e)}"
 
 def listar_historial_drive():
-    """Obtiene la lista de los últimos archivos en tu carpeta personal."""
+    """Obtiene la lista de los últimos archivos en tu carpeta personal (vía POST y GET)."""
     if not APPS_SCRIPT_URL:
         return []
+        
+    # Intento 1: Consulta por POST
+    try:
+        payload = {"action": "list"}
+        res = requests.post(APPS_SCRIPT_URL, json=payload, timeout=15)
+        data = res.json()
+        if data.get("status") == "success":
+            return data.get("files", [])
+    except Exception as e:
+        print(f"Error consultando historial vía POST: {e}")
+
+    # Intento 2: Respaldar consulta por GET
     try:
         res = requests.get(APPS_SCRIPT_URL, timeout=15)
         data = res.json()
         if data.get("status") == "success":
             return data.get("files", [])
-        return []
-    except Exception:
-        return []
+    except Exception as e:
+        print(f"Error consultando historial vía GET: {e}")
+
+    return []
 
 def descargar_csv_drive(file_id):
     """Descarga el contenido del CSV directamente a través de Google Apps Script."""

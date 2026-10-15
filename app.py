@@ -38,7 +38,7 @@ def safe_float(val, default=None):
         return default
 
 # ---------------------------------------------------------------------
-# ESTILOS GLOBALES Y POSICIONAMIENTO DE TOASTS (ESQUINA SUPERIOR IZQUIERDA)
+# ESTILOS GLOBALES Y POSICIONAMIENTO DE TOASTS
 # ---------------------------------------------------------------------
 def aplicar_ui_kit():
     st.markdown("""
@@ -178,18 +178,6 @@ div.stButton > button:disabled {
     font-size: clamp(12px, 1.1vw, 19px);
     font-weight: 800;
 }
-
-/* Fila de Historial */
-.hist-row {
-    background-color: #1A1F26;
-    border: 1px solid #232A34;
-    border-radius: 8px;
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -235,7 +223,7 @@ def render_kpi_card(titulo, valor):
 def render_historial_listado(archivos_drive, key_prefix="hist"):
     """Renderiza el historial estructurado en formato de lista con botones de acción."""
     if not archivos_drive:
-        st.markdown("<div style='color: #64748B; font-size: 13px; text-align: center; padding: 20px;'>No hay pronósticos respaldados aún.</div>", unsafe_allow_html=True)
+        st.info("ℹ️ No hay pronósticos respaldados aún en la carpeta de Google Drive.")
         return
 
     for idx_f, f in enumerate(archivos_drive):
@@ -257,10 +245,10 @@ def render_historial_listado(archivos_drive, key_prefix="hist"):
             titulo_display = nombre_f[:20]
             fecha_fmt = "Reciente"
 
-        c1, c2, c3, c4 = st.columns([3.2, 1.1, 1.1, 1.1])
+        c1, c2, c3, c4 = st.columns([3.0, 1.1, 1.1, 1.1])
         
         with c1:
-            st.markdown(f"<div style='color: #F1F5F9; font-size: 13px; font-weight: 700; padding-top: 6px;'>🏷️ {titulo_display} <span style='color: #64748B; font-size: 11px; font-weight: 400;'>({fecha_fmt})</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color: #F1F5F9; font-size: 13px; font-weight: 700; padding-top: 6px;'>🏷️ {titulo_display} <br><span style='color: #64748B; font-size: 11px; font-weight: 400;'>({fecha_fmt})</span></div>", unsafe_allow_html=True)
         
         with c2:
             if st.button("📂 Cargar", key=f"{key_prefix}_load_{file_id}_{idx_f}", use_container_width=True):
@@ -276,7 +264,7 @@ def render_historial_listado(archivos_drive, key_prefix="hist"):
 
         with c3:
             with st.popover("✏️ Editar"):
-                st.caption("Renombrar Archivo en Drive")
+                st.caption("Renombrar Archivo")
                 nuevo_tit = st.text_input("Nuevo Título:", value=titulo_display, key=f"{key_prefix}_ren_input_{file_id}_{idx_f}")
                 if st.button("💾 Confirmar", key=f"{key_prefix}_ren_btn_{file_id}_{idx_f}"):
                     if nuevo_tit.strip():
@@ -290,8 +278,8 @@ def render_historial_listado(archivos_drive, key_prefix="hist"):
 
         with c4:
             with st.popover("🗑️ Borrar"):
-                st.caption("¿Eliminar de Google Drive?")
-                if st.button("✅ Sí, Eliminar", key=f"{key_prefix}_del_btn_{file_id}_{idx_f}", type="primary"):
+                st.caption("¿Eliminar de Drive?")
+                if st.button("✅ Sí", key=f"{key_prefix}_del_btn_{file_id}_{idx_f}", type="primary"):
                     exito_d, msg_d = drive_utils.eliminar_archivo_drive(file_id)
                     if exito_d:
                         st.session_state["toast_pendiente"] = f"🗑️ Archivo '🏷️ {titulo_display}' eliminado de Drive"
@@ -299,7 +287,7 @@ def render_historial_listado(archivos_drive, key_prefix="hist"):
                     else:
                         st.error(msg_d)
         
-        st.markdown("<hr style='border:0; height:1px; background:#232A34; margin: 6px 0 10px 0;'>", unsafe_allow_html=True)
+        st.markdown("<hr style='border:0; height:1px; background:#232A34; margin: 8px 0 12px 0;'>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------
 # PANTALLA DE LOG-ON
@@ -348,7 +336,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.4.5 &bull; Release Producción
+    Motor Láquesis v1.4.7 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -358,7 +346,7 @@ def mostrar_login():
 if not st.session_state["logged_in"]:
     mostrar_login()
 else:
-    # DESPLIEGUE DE TOASTS PENDIENTES (EN LA ESQUINA SUPERIOR IZQUIERDA)
+    # DESPLIEGUE DE TOASTS PENDIENTES
     if "toast_pendiente" in st.session_state and st.session_state["toast_pendiente"]:
         st.toast(st.session_state["toast_pendiente"])
         del st.session_state["toast_pendiente"]
@@ -449,7 +437,6 @@ else:
         key=f"file_uploader_{st.session_state['uploader_key']}"
     )
 
-    # CAMPO DE TÍTULO (SIN LA LEYENDA "OPCIONAL")
     titulo_calculo = st.sidebar.text_input(
         "🏷️ Título del Cálculo",
         placeholder="Ej. Vallejo15.10.26V1",
@@ -458,7 +445,6 @@ else:
 
     ya_procesado = ("df_resultados" in st.session_state) or ("df_resultados_v1_1" in st.session_state)
 
-    # BOTÓN DE GUARDADO DESHABILITADO SI EL CAMPO DE TÍTULO ESTÁ VACÍO
     if ya_procesado:
         titulo_valido = bool(titulo_calculo and titulo_calculo.strip())
         if st.sidebar.button("💾 Guardar / Actualizar en Drive", use_container_width=True, disabled=not titulo_valido):
@@ -490,14 +476,14 @@ else:
     # WORKSPACE PRINCIPAL
     # -----------------------------------------------------------------
     if archivo_subido is None and not ya_procesado:
-        col_main, col_historial = st.columns([2.5, 1.5], gap="medium")
+        col_main, col_historial = st.columns([2.3, 1.7], gap="medium")
 
         with col_main:
             welcome_html = """
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 34px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 17px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.5
+Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.7
 </p>
 <div style="color: #94A3B8; font-size: 14px; max-width: 680px; margin: 0 auto 30px auto; line-height: 1.6;">
 Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
@@ -515,17 +501,10 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
             st.markdown(welcome_html, unsafe_allow_html=True)
 
         with col_historial:
-            st.markdown("""
-<div style="background-color: #161A20; border: 1px solid #232A34; border-radius: 12px; padding: 18px; min-height: 460px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-    <div style="color: #00E5FF; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #232A34; padding-bottom: 10px;">
-        ☁️ Historial en Drive (Últimos 5)
-    </div>
-""", unsafe_allow_html=True)
-
-            archivos_drive = drive_utils.listar_historial_drive()
-            render_historial_listado(archivos_drive, key_prefix="welcome")
-
-            st.markdown("</div>", unsafe_allow_html=True)
+            with st.container(border=True):
+                st.subheader("☁️ Historial en Drive (Últimos 5)")
+                archivos_drive = drive_utils.listar_historial_drive()
+                render_historial_listado(archivos_drive, key_prefix="welcome")
 
     else:
         if archivo_subido is not None and not ya_procesado:
@@ -566,7 +545,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.5)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.7)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -673,14 +652,13 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 titulo_act = titulo_calculo.strip() if titulo_calculo else ""
                 exito, msg = drive_utils.guardar_historial_drive(df_resultados, usuario_act, titulo_act)
                 
-                st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento v1.4.5 completado!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
+                st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento v1.4.7 completado!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
                 st.rerun()
 
         # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
         df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
         
         if df_res is not None:
-            # HISTORIAL ESTRUCTURADO EN DESPLEGABLE DENTRO DE RESULTADOS
             with st.expander("☁️ Administrar Historial de Pronósticos Guardados en Google Drive"):
                 archivos_drive = drive_utils.listar_historial_drive()
                 render_historial_listado(archivos_drive, key_prefix="exp")
@@ -688,7 +666,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
             st.markdown("<br>", unsafe_allow_html=True)
 
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.4.5)")
+            st.subheader("📋 Resumen General de Resultados (v1.4.7)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
