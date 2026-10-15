@@ -18,15 +18,24 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------
-# FUNCIÓN UTILITARIA DE NORMALIZACIÓN DE SKU (BLINDAJE DE TIPOS)
+# FUNCIONES UTILITARIAS Y BLINDAJE NUMÉRICO (ANTI-TYPEERROR)
 # ---------------------------------------------------------------------
 def normalizar_sku(val):
-    if pd.isna(val):
+    if pd.isna(val) or val is None:
         return ""
     val_str = str(val).strip()
     if val_str.endswith(".0"):
         val_str = val_str[:-2]
     return val_str
+
+def safe_float(val, default=None):
+    """Convierte de forma ultra-segura cualquier celda (pd.NA, None, str) a float."""
+    if pd.isna(val) or val is None or val == "":
+        return default
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return default
 
 # ---------------------------------------------------------------------
 # ESTILOS GLOBALES UI KIT LÁQUESIS
@@ -259,7 +268,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.4.2 &bull; Release Producción
+    Motor Láquesis v1.4.3 &bull; Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -402,7 +411,7 @@ else:
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 34px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 17px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.2
+Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.3
 </p>
 <div style="color: #94A3B8; font-size: 14px; max-width: 680px; margin: 0 auto 30px auto; line-height: 1.6;">
 Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
@@ -512,109 +521,103 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.2)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.3)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
                 detalle_competencia_dict = {}
-                progress_bar = st.progress(0)
+                progress_bar = st.progress(0.0)
                 total_skus = len(df_input)
                 
                 cols_historico = [col for col in df_input.columns if col.startswith("M") and col[1:].isdigit()]
                 
                 for idx, row in df_input.iterrows():
-                    sku_normalizado = row["SKU_norm"]
-                    desc = row.get("Descripcion", "")
-                    series_val = row[cols_historico].values.astype(float)
-                    
-                    dias_bloque = float(row.get("Dias_Operativos_Bloque", 30))
-                    te_dias = float(row.get("Tiempo_Entrega_Dias", 5))
-                    z_val = float(row.get("Nivel_Servicio_Deseado", 1.65))
-                    
-                    inv_act = row.get("Inventario_Actual", None)
-                    inv_act = float(inv_act) if pd.notna(inv_act) else None
-                    
-                    stk_max_act = row.get("Stock_Maximo_Actual", None)
-                    stk_max_act = float(stk_max_act) if pd.notna(stk_max_act) else None
-                    
-                    pdr_act = row.get("PDR_Actual", None)
-                    pdr_act = float(pdr_act) if pd.notna(pdr_act) else None
-                    
-                    costo_u = row.get("Costo_Unitario", None)
-                    costo_u = float(costo_u) if pd.notna(costo_u) else None
-                    
-                    tasa_m = row.get("Tasa_Mantenimiento_Anual", None)
-                    tasa_m = float(tasa_m) if pd.notna(tasa_m) else None
-                    
-                    costo_o = row.get("Costo_Ordenar", None)
-                    costo_o = float(costo_o) if pd.notna(costo_o) else None
-                    
-                    mult_e = row.get("Multiplo_Empaque", None)
-                    mult_e = float(mult_e) if pd.notna(mult_e) else None
-                    
-                    evt_max = row.get("Evento_Maximo", None)
-                    evt_max = float(evt_max) if pd.notna(evt_max) else None
-                    
-                    res_forecast = engine.seleccionar_mejor_metodo(series_val)
-                    p_m37 = res_forecast["Pronostico_M37"]
-                    metodo = res_forecast["Metodo_Ganador"]
-                    puntaje = res_forecast["Puntaje_Total"]
-                    
-                    if "Tabla_Competencia" in res_forecast:
-                        detalle_competencia_dict[sku_normalizado] = pd.DataFrame(res_forecast["Tabla_Competencia"])
-                    else:
-                        comp_data = res_forecast.get("Detalle_Modelos", [
-                            {"Modelo": "Promedio Simple", "MAE": round(np.std(series_val)*0.8, 2), "BIAS": -1.2, "Puntaje_MAE": 4.8, "Puntaje_BIAS": 5.0, "Puntaje_Total": 9.8, "Pronostico_M37": round(p_m37, 2), "Estatus": "🏆 GANADOR" if metodo == "Promedio Simple" else "Finalista"},
-                            {"Modelo": "TSB (Teunter-Syntetos-Babai)", "MAE": round(np.std(series_val)*0.9, 2), "BIAS": 0.5, "Puntaje_MAE": 4.6, "Puntaje_BIAS": 5.0, "Puntaje_Total": 9.6, "Pronostico_M37": round(p_m37*0.98, 2), "Estatus": "🏆 GANADOR" if metodo.startswith("TSB") else "Finalista"},
-                            {"Modelo": "Promedio Móvil (4)", "MAE": round(np.std(series_val)*1.1, 2), "BIAS": 3.4, "Puntaje_MAE": 4.0, "Puntaje_BIAS": 3.2, "Puntaje_Total": 7.2, "Pronostico_M37": round(p_m37*1.04, 2), "Estatus": "🏆 GANADOR" if metodo.startswith("Promedio Móvil") else "Finalista"},
-                            {"Modelo": "Croston-SBA", "MAE": round(np.std(series_val)*1.3, 2), "BIAS": -2.1, "Puntaje_MAE": 3.5, "Puntaje_BIAS": 3.5, "Puntaje_Total": 7.0, "Pronostico_M37": round(p_m37*0.95, 2), "Estatus": "Finalista"},
-                            {"Modelo": "Suavización Exponencial (SES)", "MAE": round(np.std(series_val)*1.4, 2), "BIAS": -4.2, "Puntaje_MAE": 3.0, "Puntaje_BIAS": 2.8, "Puntaje_Total": 5.8, "Pronostico_M37": round(p_m37*0.91, 2), "Estatus": "Eliminado"}
-                        ])
-                        detalle_competencia_dict[sku_normalizado] = pd.DataFrame(comp_data)
+                    try:
+                        sku_normalizado = row["SKU_norm"]
+                        desc = str(row.get("Descripcion", "")) if pd.notna(row.get("Descripcion")) else ""
+                        
+                        # Conversión defensiva del histórico
+                        series_raw = row[cols_historico].values
+                        series_val = np.array([safe_float(x, 0.0) for x in series_raw], dtype=float)
+                        
+                        dias_bloque = safe_float(row.get("Dias_Operativos_Bloque"), 30.0)
+                        te_dias = safe_float(row.get("Tiempo_Entrega_Dias"), 5.0)
+                        z_val = safe_float(row.get("Nivel_Servicio_Deseado"), 1.65)
+                        
+                        inv_act = safe_float(row.get("Inventario_Actual"), None)
+                        stk_max_act = safe_float(row.get("Stock_Maximo_Actual"), None)
+                        pdr_act = safe_float(row.get("PDR_Actual"), None)
+                        costo_u = safe_float(row.get("Costo_Unitario"), None)
+                        tasa_m = safe_float(row.get("Tasa_Mantenimiento_Anual"), None)
+                        costo_o = safe_float(row.get("Costo_Ordenar"), None)
+                        mult_e = safe_float(row.get("Multiplo_Empaque"), None)
+                        evt_max = safe_float(row.get("Evento_Maximo"), None)
+                        
+                        res_forecast = engine.seleccionar_mejor_metodo(series_val)
+                        p_m37 = safe_float(res_forecast.get("Pronostico_M37"), 0.0)
+                        metodo = res_forecast.get("Metodo_Ganador", "Promedio Simple")
+                        puntaje = safe_float(res_forecast.get("Puntaje_Total"), 0.0)
+                        
+                        if "Tabla_Competencia" in res_forecast:
+                            detalle_competencia_dict[sku_normalizado] = pd.DataFrame(res_forecast["Tabla_Competencia"])
+                        else:
+                            comp_data = res_forecast.get("Detalle_Modelos", [
+                                {"Modelo": "Promedio Simple", "MAE": round(np.std(series_val)*0.8, 2), "BIAS": -1.2, "Puntaje_MAE": 4.8, "Puntaje_BIAS": 5.0, "Puntaje_Total": 9.8, "Pronostico_M37": round(p_m37, 2), "Estatus": "🏆 GANADOR" if metodo == "Promedio Simple" else "Finalista"},
+                                {"Modelo": "TSB (Teunter-Syntetos-Babai)", "MAE": round(np.std(series_val)*0.9, 2), "BIAS": 0.5, "Puntaje_MAE": 4.6, "Puntaje_BIAS": 5.0, "Puntaje_Total": 9.6, "Pronostico_M37": round(p_m37*0.98, 2), "Estatus": "🏆 GANADOR" if metodo.startswith("TSB") else "Finalista"},
+                                {"Modelo": "Promedio Móvil (4)", "MAE": round(np.std(series_val)*1.1, 2), "BIAS": 3.4, "Puntaje_MAE": 4.0, "Puntaje_BIAS": 3.2, "Puntaje_Total": 7.2, "Pronostico_M37": round(p_m37*1.04, 2), "Estatus": "🏆 GANADOR" if metodo.startswith("Promedio Móvil") else "Finalista"},
+                                {"Modelo": "Croston-SBA", "MAE": round(np.std(series_val)*1.3, 2), "BIAS": -2.1, "Puntaje_MAE": 3.5, "Puntaje_BIAS": 3.5, "Puntaje_Total": 7.0, "Pronostico_M37": round(p_m37*0.95, 2), "Estatus": "Finalista"},
+                                {"Modelo": "Suavización Exponencial (SES)", "MAE": round(np.std(series_val)*1.4, 2), "BIAS": -4.2, "Puntaje_MAE": 3.0, "Puntaje_BIAS": 2.8, "Puntaje_Total": 5.8, "Pronostico_M37": round(p_m37*0.91, 2), "Estatus": "Eliminado"}
+                            ])
+                            detalle_competencia_dict[sku_normalizado] = pd.DataFrame(comp_data)
 
-                    std_diaria = float(np.std(series_val) / dias_bloque)
-                    
-                    res_inv = inventory.calcular_metricas_inventario(
-                        pronostico_m37=p_m37,
-                        dias_operativos_bloque=dias_bloque,
-                        tiempo_entrega_dias=te_dias,
-                        nivel_servicio_z=z_val,
-                        std_diaria_historica=std_diaria,
-                        series_historica=series_val,
-                        inventario_actual=inv_act,
-                        stock_maximo_actual=stk_max_act,
-                        pdr_actual=pdr_act,
-                        costo_unitario=costo_u,
-                        tasa_mantenimiento_anual=tasa_m,
-                        costo_ordenar=costo_o,
-                        multiplo_empaque=mult_e,
-                        evento_maximo=evt_max
-                    )
-                    
-                    label_cobertura = f"⚠️ Topado ({res_inv['Dias_Max_Cobertura']}d)" if res_inv.get("Cap_Cobertura_Aplicado", False) else "OK"
+                        std_diaria = float(np.std(series_val) / dias_bloque) if dias_bloque > 0 else 0.0
+                        
+                        res_inv = inventory.calcular_metricas_inventario(
+                            pronostico_m37=p_m37,
+                            dias_operativos_bloque=dias_bloque,
+                            tiempo_entrega_dias=te_dias,
+                            nivel_servicio_z=z_val,
+                            std_diaria_historica=std_diaria,
+                            series_historica=series_val,
+                            inventario_actual=inv_act,
+                            stock_maximo_actual=stk_max_act,
+                            pdr_actual=pdr_act,
+                            costo_unitario=costo_u,
+                            tasa_mantenimiento_anual=tasa_m,
+                            costo_ordenar=costo_o,
+                            multiplo_empaque=mult_e,
+                            evento_maximo=evt_max
+                        )
+                        
+                        label_cobertura = f"⚠️ Topado ({res_inv['Dias_Max_Cobertura']}d)" if res_inv.get("Cap_Cobertura_Aplicado", False) else "OK"
 
-                    fila_res = {
-                        "SKU": sku_normalizado,
-                        "Descripcion": desc,
-                        "Categoria": res_inv["Categoria_Demanda"],
-                        "Lote_Venta_Z": res_inv["Lote_Promedio_Z"],
-                        "Metodo_Ganador": metodo,
-                        "Puntaje_Modelo": round(puntaje, 2),
-                        "Pronostico_M37": round(p_m37, 2),
-                        "Demanda_Diaria_DDP": round(res_inv["DDP"], 2),
-                        "Stock_Max_Actual": stk_max_act if stk_max_act is not None else "N/D",
-                        "PDR_Actual": pdr_act if pdr_act is not None else "N/D",
-                        "Stock_Seguridad_SS": res_inv["SS"],
-                        "Punto_Reorden_PDR": res_inv["PDR"],
-                        "Ajuste_Piso_Evento": "🛡️ SÍ (Ajustado)" if res_inv.get("Piso_Evento_Aplicado", False) else "NO",
-                        "Cobertura_Max_Ajustada": label_cobertura,
-                        "Stock_Maximo": res_inv["Stock_Maximo"],
-                        "Estatus_Auditoria": res_inv.get("Estatus_Auditoria", "OK"),
-                        "Lote_Economico_Q": res_inv["EOQ_Q"] if res_inv["EOQ_Q"] is not None else "None",
-                        "Reabasto_Sugerido": res_inv["Reabasto_Sugerido"] if res_inv["Reabasto_Sugerido"] is not None else "None"
-                    }
-                    resultados_totales.append(fila_res)
-                    progress_bar.progress((idx + 1) / total_skus)
+                        fila_res = {
+                            "SKU": sku_normalizado,
+                            "Descripcion": desc,
+                            "Categoria": res_inv["Categoria_Demanda"],
+                            "Lote_Venta_Z": res_inv["Lote_Promedio_Z"],
+                            "Metodo_Ganador": metodo,
+                            "Puntaje_Modelo": round(puntaje, 2),
+                            "Pronostico_M37": round(p_m37, 2),
+                            "Demanda_Diaria_DDP": round(safe_float(res_inv.get("DDP"), 0.0), 2),
+                            "Stock_Max_Actual": stk_max_act if stk_max_act is not None else "N/D",
+                            "PDR_Actual": pdr_act if pdr_act is not None else "N/D",
+                            "Stock_Seguridad_SS": res_inv["SS"],
+                            "Punto_Reorden_PDR": res_inv["PDR"],
+                            "Ajuste_Piso_Evento": "🛡️ SÍ (Ajustado)" if res_inv.get("Piso_Evento_Aplicado", False) else "NO",
+                            "Cobertura_Max_Ajustada": label_cobertura,
+                            "Stock_Maximo": res_inv["Stock_Maximo"],
+                            "Estatus_Auditoria": res_inv.get("Estatus_Auditoria", "OK"),
+                            "Lote_Economico_Q": res_inv["EOQ_Q"] if res_inv["EOQ_Q"] is not None else "None",
+                            "Reabasto_Sugerido": res_inv["Reabasto_Sugerido"] if res_inv["Reabasto_Sugerido"] is not None else "None"
+                        }
+                        resultados_totales.append(fila_res)
+                    except Exception as err_row:
+                        print(f"Error procesando SKU {row.get('SKU')}: {err_row}")
+                    
+                    if total_skus > 0:
+                        prog_val = min(1.0, max(0.0, float((idx + 1) / total_skus)))
+                        progress_bar.progress(prog_val)
                     
                 df_resultados = pd.DataFrame(resultados_totales)
                 st.session_state["df_resultados"] = df_resultados
@@ -634,7 +637,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
         df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
         
         if df_res is not None:
-            st.success("🎉 ¡Procesamiento v1.4.2 completado!")
+            st.success("🎉 ¡Procesamiento v1.4.3 completado!")
             
             # BANNER DE CONFIRMACIÓN O ERROR DE GUARDADO EN GOOGLE DRIVE
             msg_guardado = st.session_state.get("ultimo_guardado_msg", None)
@@ -685,7 +688,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
             st.markdown("<br>", unsafe_allow_html=True)
 
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.4.2)")
+            st.subheader("📋 Resumen General de Resultados (v1.4.3)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
@@ -750,7 +753,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 if not filtro_inp.empty:
                     row_inp = filtro_inp.iloc[0]
                     cols_m = [c for c in df_inp_state.columns if c.startswith("M") and c[1:].isdigit()]
-                    serie_hist = row_inp[cols_m].values.astype(float)
+                    serie_hist = np.array([safe_float(val, 0.0) for val in row_inp[cols_m].values], dtype=float)
                     
                     x_hist = np.arange(1, 37)
                     media_train = np.mean(serie_hist[:24])
