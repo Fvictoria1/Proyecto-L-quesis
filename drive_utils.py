@@ -54,13 +54,23 @@ def listar_historial_drive():
         return []
 
 def descargar_csv_drive(file_id):
-    """Descarga el archivo directamente desde Google Drive por su ID."""
+    """Descarga el contenido del CSV directamente a través de Google Apps Script."""
+    if not APPS_SCRIPT_URL:
+        return None
     try:
-        url_download = f"https://drive.google.com/uc?export=download&id={file_id}"
-        df = pd.read_csv(url_download)
-        return df
+        payload = {
+            "action": "download",
+            "file_id": file_id
+        }
+        res = requests.post(APPS_SCRIPT_URL, json=payload, timeout=30)
+        data = res.json()
+        if data.get("status") == "success":
+            csv_str = data.get("csv_content", "")
+            df = pd.read_csv(io.StringIO(csv_str))
+            return df
+        return None
     except Exception as e:
-        print(f"Error descargando desde Drive: {e}")
+        print(f"Error descargando desde Apps Script: {e}")
         return None
 
 def renombrar_archivo_drive(file_id, nuevo_titulo, usuario="User"):

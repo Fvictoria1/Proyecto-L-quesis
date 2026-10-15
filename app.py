@@ -271,7 +271,8 @@ def render_historial_listado(archivos_drive, key_prefix="hist"):
                         st.session_state["toast_pendiente"] = f"📂 Pronóstico '🏷️ {titulo_display}' cargado en pantalla"
                         st.rerun()
                     else:
-                        st.error("Error al cargar archivo")
+                        st.session_state["toast_pendiente"] = f"❌ Error al descargar '🏷️ {titulo_display}' desde Drive"
+                        st.rerun()
 
         with c3:
             with st.popover("✏️ Editar"):
