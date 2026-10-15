@@ -354,6 +354,13 @@ else:
         key=f"file_uploader_{st.session_state['uploader_key']}"
     )
 
+    # Campo opcional para titular la corrida
+    titulo_calculo = st.sidebar.text_input(
+        "🏷️ Título del Cálculo (Opcional)",
+        placeholder="Ej. Pronóstico Q4 - Sucursales Norte",
+        key="titulo_calculo_input"
+    )
+
     st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
 
     # PASO 3
@@ -427,8 +434,15 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                         partes = nombre_f.replace(".csv", "").split("_")
                         fecha_raw = f"{partes[-2]} {partes[-1]}"
                         dt_obj = datetime.strptime(fecha_raw, "%Y%m%d %H%M%S")
-                        fecha_fmt = dt_obj.strftime("%d %b %Y, %H:%M")
-                        label_btn = f"📄 {fecha_fmt}"
+                        fecha_fmt = dt_obj.strftime("%d %b, %H:%M")
+                        
+                        # Si el nombre contiene un título personalizado (más de 4 partes)
+                        if len(partes) > 4:
+                            titulo_slug = "_".join(partes[2:-2])
+                            titulo_display = titulo_slug.replace("-", " ")
+                            label_btn = f"🏷️ {titulo_display} ({fecha_fmt})"
+                        else:
+                            label_btn = f"📄 Corrida ({fecha_fmt})"
                     except Exception:
                         label_btn = f"📄 {nombre_f[:25]}"
 
@@ -592,9 +606,10 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 st.session_state["df_input"] = df_input
                 st.session_state["detalle_competencia"] = detalle_competencia_dict
                 
-                # GUARDADO AUTOMÁTICO EN GOOGLE DRIVE
+                # GUARDADO AUTOMÁTICO EN GOOGLE DRIVE CON TÍTULO
                 usuario_act = st.session_state.get('usuario_actual', 'Fvictoria1')
-                drive_utils.guardar_historial_drive(df_resultados, usuario_act)
+                titulo_act = st.session_state.get('titulo_calculo_input', '')
+                drive_utils.guardar_historial_drive(df_resultados, usuario_act, titulo_act)
                 
                 st.rerun()
 
