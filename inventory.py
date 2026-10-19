@@ -17,6 +17,7 @@ def clasificar_intermitencia(series_historica):
     """
     Calcula ADI, CV2 y tamaño de lote promedio z
     para la categorización de demanda (Syntetos-Boylan).
+    Uso meramente informativo para la matriz de resultados.
     """
     s = np.array(series_historica, dtype=float)
     nz_indices = np.where(s > 0)[0]
@@ -76,11 +77,11 @@ def calcular_metricas_inventario(
 
     dias_bloque = float(dias_operativos_bloque) if dias_operativos_bloque > 0 else 30.0
     
-    # DDP del Pronóstico (Usado para estimar el Lead Time del próximo periodo)
+    # DDP del Pronóstico
     ddp = pronostico_m37 / dias_bloque
     demanda_anual = pronostico_m37 * 12.0
     
-    # NUEVO: DDP Histórico (Usado como ancla de realidad para el Techo de Cobertura)
+    # DDP Histórico (Ancla de realidad para el Techo de Cobertura de 90 Días)
     if series_historica is not None and len(series_historica) > 0:
         media_mensual_historica = float(np.mean(series_historica))
     else:
@@ -112,17 +113,11 @@ def calcular_metricas_inventario(
     max_exacto = pdr_exacto + lote_operativo
     
     # -----------------------------------------------------------------
-    # 2. PROTECCIÓN POR LOTE Z (DEMANDA INTERMITENTE / ERRÁTICA)
+    # 2. CATEGORIZACIÓN DE DEMANDA (INFORMATIVA)
     # -----------------------------------------------------------------
     adi, cv2, z_lote, categoria = 0.0, 0.0, 0.0, "Regular"
     if series_historica is not None and len(series_historica) > 0:
         adi, cv2, z_lote, categoria = clasificar_intermitencia(series_historica)
-        
-        if categoria in ["Intermitente", "Errática", "Irregular (Lumpy)"]:
-            pdr_exacto = max(pdr_exacto, z_lote)
-            lote_operativo = max(lote_operativo, z_lote)
-            max_exacto = pdr_exacto + lote_operativo
-            ss_exacto = max(ss_exacto, pdr_exacto - demanda_lt)
 
     pdr_piso_base = max(pdr_exacto, demanda_lt + ss_exacto)
 
@@ -147,16 +142,12 @@ def calcular_metricas_inventario(
             pass
 
     # -----------------------------------------------------------------
-    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA (ANCLADO A LA REALIDAD HISTÓRICA)
+    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA (ESTRICTO 90 DÍAS)
     # -----------------------------------------------------------------
     dias_max_cobertura = 90.0
-    piso_cobertura_lote = z_lote if (categoria in ["Intermitente", "Errática", "Irregular (Lumpy)"] and z_lote > 0) else 0.0
-    
-    # EL CAMBIO MAESTRO DE FRANK: Usar ddp_historico en lugar de ddp(pronóstico)
-    tope_maximo_unidades = max(ddp_historico * dias_max_cobertura, piso_cobertura_lote)
+    tope_maximo_unidades = ddp_historico * dias_max_cobertura
     cap_cobertura_aplicado = False
 
-    # Condicionamos usando el ddp_historico
     if max_exacto > tope_maximo_unidades and ddp_historico > 0:
         cap_cobertura_aplicado = True
         max_exacto = tope_maximo_unidades
@@ -207,23 +198,22 @@ def calcular_metricas_inventario(
     if max_final > 1 and pdr_final >= max_final:
         pdr_final = max(1, max_final - 1)
 
-# -----------------------------------------------------------------
-    # 7. REGLAS DE AUDITORÍA Y CANDADO OPERATIVO (CORREGIDO)
+    # -----------------------------------------------------------------
+    # 7. REGLAS DE AUDITORÍA Y CANDADO OPERATIVO
     # -----------------------------------------------------------------
     estatus_auditoria = "OK"
     umbral_colapso = 2.0 if es_sku_prioritario else 5.0
     pct_etiqueta = "200%" if es_sku_prioritario else "500%"
     candado_activado = False
 
-    # 7.1 VERIFICACIÓN INDEPENDIENTE DE INVENTARIO FANTASMA (PRIORIDAD ALTA)
+    # 7.1 VERIFICACIÓN INDEPENDIENTE DE INVENTARIO FANTASMA
     if series_historica is not None and len(series_historica) >= 6:
         ventas_ultimos_3m = np.sum(series_historica[-3:])
-        # Si no se ha vendido nada en 3 meses, y el ERP marca que sí tenemos stock físico:
         if ventas_ultimos_3m == 0 and (inventario_actual is not None and float(inventario_actual) > 0):
             estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
             candado_activado = True
 
-    # 7.2 VERIFICACIÓN DE COLAPSO EXTREMO DE STOCK (Si no es fantasma)
+    # 7.2 VERIFICACIÓN DE COLAPSO EXTREMO DE STOCK
     if not candado_activado and stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
         ratio_colapso = float(stock_maximo_actual) / max(1.0, float(max_final))
         if ratio_colapso >= umbral_colapso:
