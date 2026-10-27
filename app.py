@@ -311,7 +311,7 @@ def mostrar_login():
 <circle cx="65" cy="60" r="3.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.5"/>
 <circle cx="83" cy="55" r="5.5" fill="#00E5FF" stroke="#FFFFFF" stroke-width="2"/>
 <text x="108" y="50" fill="#FFFFFF" font-family="'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="800" letter-spacing="5">LÁQUESIS</text>
-<text x="110" y="72" fill="#00E5FF" font-family="'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" letter-spacing="2">DEMAND &amp; FORECASTING ENGINE</text>
+<text x="110" y="72" fill="#00E5FF" font-family="'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" letter-spacing="2">DEMAND & FORECASTING ENGINE</text>
 <line x1="110" y1="82" x2="370" y2="82" stroke="#2A323D" stroke-width="1.5"/>
 <line x1="110" y1="82" x2="210" y2="82" stroke="#00E5FF" stroke-width="2.5"/>
 </svg>
@@ -336,7 +336,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.4.7 &bull; Release Producción
+    Motor Láquesis v1.4.9 • Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -365,7 +365,7 @@ else:
 <circle cx="26" cy="15" r="2.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.2"/>
 <circle cx="50" cy="31" r="4" fill="#00E5FF" stroke="#FFFFFF" stroke-width="1.5"/>
 <text x="64" y="32" fill="#FFFFFF" font-family="'Segoe UI', Roboto, sans-serif" font-size="19" font-weight="800" letter-spacing="2.5">LÁQUESIS</text>
-<text x="65" y="46" fill="#00E5FF" font-family="'Segoe UI', Roboto, sans-serif" font-size="7" font-weight="700" letter-spacing="1">DEMAND &amp; FORECASTING</text>
+<text x="65" y="46" fill="#00E5FF" font-family="'Segoe UI', Roboto, sans-serif" font-size="7" font-weight="700" letter-spacing="1">DEMAND & FORECASTING</text>
 </svg>
 </div>
 """
@@ -483,7 +483,7 @@ else:
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 34px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 17px; font-weight: 600; margin-bottom: 25px;">
-Demand &amp; Forecasting Engine — Módulo de Administración Operativa v1.4.7
+Demand & Forecasting Engine — Módulo de Administración Operativa v1.4.9
 </p>
 <div style="color: #94A3B8; font-size: 14px; max-width: 680px; margin: 0 auto 30px auto; line-height: 1.6;">
 Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
@@ -545,7 +545,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.7)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.9)", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -652,7 +652,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 titulo_act = titulo_calculo.strip() if titulo_calculo else ""
                 exito, msg = drive_utils.guardar_historial_drive(df_resultados, usuario_act, titulo_act)
                 
-                st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento v1.4.7 completado!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
+                st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento v1.4.9 completado!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
                 st.rerun()
 
         # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
@@ -666,7 +666,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
             st.markdown("<br>", unsafe_allow_html=True)
 
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.4.7)")
+            st.subheader("📋 Resumen General de Resultados (v1.4.9)")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
