@@ -93,142 +93,162 @@ def calcular_metricas_inventario(
     z = float(nivel_servicio_z)
     demanda_lt = ddp * te
     
-    # -----------------------------------------------------------------
-    # 1. CÁLCULOS TRADICIONALES DE INVENTARIO
-    # -----------------------------------------------------------------
-    ss_exacto = z * std_diaria_historica * np.sqrt(te)
-    pdr_exacto = demanda_lt + ss_exacto
-    
-    q_exacto = None
-    if (
-        costo_unitario is not None and costo_unitario > 0 and
-        tasa_mantenimiento_anual is not None and tasa_mantenimiento_anual > 0 and
-        costo_ordenar is not None and costo_ordenar > 0
-    ):
-        h = costo_unitario * tasa_mantenimiento_anual
-        q_exacto = np.sqrt((2.0 * costo_ordenar * demanda_anual) / h)
-        
-    lote_base = q_exacto if q_exacto is not None else pronostico_m37
-    lote_operativo = max(lote_base, 1.0)
-    max_exacto = pdr_exacto + lote_operativo
-    
-    # -----------------------------------------------------------------
-    # 2. CATEGORIZACIÓN DE DEMANDA (INFORMATIVA)
-    # -----------------------------------------------------------------
+    # Categorización de demanda (Informativa)
     adi, cv2, z_lote, categoria = 0.0, 0.0, 0.0, "Regular"
     if series_historica is not None and len(series_historica) > 0:
         adi, cv2, z_lote, categoria = clasificar_intermitencia(series_historica)
 
-    pdr_piso_base = max(pdr_exacto, demanda_lt + ss_exacto)
-
-    # -----------------------------------------------------------------
-    # 3. REGLA DE PISO POR EVENTO MÁXIMO
-    # -----------------------------------------------------------------
     z_redondeado = round(z, 2)
     es_sku_prioritario = z_redondeado in [1.65, 2.05]
-    piso_evento_aplicado = False
-    
-    if evento_maximo is not None:
-        try:
-            val_evt = float(evento_maximo)
-            if not np.isnan(val_evt) and val_evt > 0 and es_sku_prioritario:
-                if pdr_exacto < val_evt:
-                    pdr_exacto = val_evt
-                    ss_exacto = pdr_exacto - demanda_lt
-                    max_exacto = pdr_exacto + lote_operativo
-                    piso_evento_aplicado = True
-                    pdr_piso_base = max(pdr_piso_base, val_evt)
-        except (ValueError, TypeError):
-            pass
-
-    # -----------------------------------------------------------------
-    # 4. TECHO SUPREMO POR DÍAS DE COBERTURA (ESTRICTO 90 DÍAS)
-    # -----------------------------------------------------------------
     dias_max_cobertura = 90.0
-    tope_maximo_unidades = ddp_historico * dias_max_cobertura
-    cap_cobertura_aplicado = False
 
-    if max_exacto > tope_maximo_unidades and ddp_historico > 0:
-        cap_cobertura_aplicado = True
-        max_exacto = tope_maximo_unidades
+    # -----------------------------------------------------------------
+    # REGLA DE PRONÓSTICO CERO ABSOLUTO (DATOS ATÍPICOS / SIN DEMANDA)
+    # -----------------------------------------------------------------
+    if pronostico_m37 == 0.0:
+        stk_act = float(stock_maximo_actual) if (stock_maximo_actual is not None and stock_maximo_actual > 0) else 0.0
+        pdr_act_val = float(pdr_actual) if (pdr_actual is not None and pdr_actual > 0) else 0.0
         
-        paso_min = float(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1.0
-        pdr_exacto = min(max_exacto - paso_min, pdr_piso_base)
-        
-        if pdr_exacto < (demanda_lt + ss_exacto) and max_exacto > demanda_lt:
-            pdr_exacto = min(max_exacto - paso_min, demanda_lt + ss_exacto)
+        # Sub-escenario: SKU prioritario sin stock configurado en el ERP
+        if es_sku_prioritario and stk_act == 0.0:
+            emp = float(multiplo_empaque) if (multiplo_empaque is not None and multiplo_empaque > 0) else 1.0
+            max_final = int(emp)
+            pdr_final = int(np.ceil(max_final / 2.0))
+            estatus_auditoria = "🛡️ PISO INICIAL POR PRONÓSTICO CERO (PRIORITARIO)"
+        else:
+            # Conservar stock y PDR actuales del ERP
+            max_final = int(stk_act)
+            pdr_final = int(pdr_act_val)
+            estatus_auditoria = "RETENCIÓN POR PRONÓSTICO CERO"
             
-        ss_exacto = max(0.0, pdr_exacto - demanda_lt)
+        ss_final = max(0, pdr_final - int(np.ceil(demanda_lt)))
+        q_final = None
+        piso_evento_aplicado = False
+        cap_cobertura_aplicado = False
 
-    # -----------------------------------------------------------------
-    # 5. REDONDEOS POR EMPAQUE O ENTEROS
-    # -----------------------------------------------------------------
-    if multiplo_empaque is not None and multiplo_empaque > 0:
-        emp = float(multiplo_empaque)
-        pdr_final = int(np.ceil(pdr_exacto / emp) * emp) if pdr_exacto > 0 else 0
-        max_final = int(np.ceil(max_exacto / emp) * emp) if max_exacto > 0 else 0
-        ss_final = int(np.ceil(ss_exacto))
-        q_final = int(np.ceil(q_exacto / emp) * emp) if q_exacto is not None else None
     else:
-        pdr_final = int(np.ceil(pdr_exacto))
-        max_final = int(np.ceil(max_exacto))
-        ss_final = int(np.ceil(ss_exacto))
-        q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
-
-    # -----------------------------------------------------------------
-    # 6. REGLAS DE PISO, SEPARACIÓN Y GUARDIÁN FINAL DEL PDR
-    # -----------------------------------------------------------------
-    paso_min = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
-
-    if max_final == 1:
-        pdr_final = 1
-
-    elif max_final > 1:
-        if pdr_final >= max_final:
-            pdr_final = max_final - paso_min
-            
-        if max_final >= 4:
-            pdr_piso_operativo = max(2, int(np.ceil(0.33 * max_final)))
-            if pdr_final < pdr_piso_operativo:
-                pdr_final = pdr_piso_operativo
-
-    if max_final > 0 and pdr_final < 1:
-        pdr_final = 1
+        # -----------------------------------------------------------------
+        # 1. CÁLCULOS TRADICIONALES DE INVENTARIO
+        # -----------------------------------------------------------------
+        ss_exacto = z * std_diaria_historica * np.sqrt(te)
+        pdr_exacto = demanda_lt + ss_exacto
         
-    if max_final > 1 and pdr_final >= max_final:
-        pdr_final = max(1, max_final - 1)
+        q_exacto = None
+        if (
+            costo_unitario is not None and costo_unitario > 0 and
+            tasa_mantenimiento_anual is not None and tasa_mantenimiento_anual > 0 and
+            costo_ordenar is not None and costo_ordenar > 0
+        ):
+            h = costo_unitario * tasa_mantenimiento_anual
+            q_exacto = np.sqrt((2.0 * costo_ordenar * demanda_anual) / h)
+            
+        lote_base = q_exacto if q_exacto is not None else pronostico_m37
+        lote_operativo = max(lote_base, 1.0)
+        max_exacto = pdr_exacto + lote_operativo
+
+        pdr_piso_base = max(pdr_exacto, demanda_lt + ss_exacto)
+
+        # -----------------------------------------------------------------
+        # 2. REGLA DE PISO POR EVENTO MÁXIMO
+        # -----------------------------------------------------------------
+        piso_evento_aplicado = False
+        if evento_maximo is not None:
+            try:
+                val_evt = float(evento_maximo)
+                if not np.isnan(val_evt) and val_evt > 0 and es_sku_prioritario:
+                    if pdr_exacto < val_evt:
+                        pdr_exacto = val_evt
+                        ss_exacto = pdr_exacto - demanda_lt
+                        max_exacto = pdr_exacto + lote_operativo
+                        piso_evento_aplicado = True
+                        pdr_piso_base = max(pdr_piso_base, val_evt)
+            except (ValueError, TypeError):
+                pass
+
+        # -----------------------------------------------------------------
+        # 3. TECHO SUPREMO POR DÍAS DE COBERTURA (ESTRICTO 90 DÍAS)
+        # -----------------------------------------------------------------
+        tope_maximo_unidades = ddp_historico * dias_max_cobertura
+        cap_cobertura_aplicado = False
+
+        if max_exacto > tope_maximo_unidades and ddp_historico > 0:
+            cap_cobertura_aplicado = True
+            max_exacto = tope_maximo_unidades
+            
+            paso_min = float(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1.0
+            pdr_exacto = min(max_exacto - paso_min, pdr_piso_base)
+            
+            if pdr_exacto < (demanda_lt + ss_exacto) and max_exacto > demanda_lt:
+                pdr_exacto = min(max_exacto - paso_min, demanda_lt + ss_exacto)
+                
+            ss_exacto = max(0.0, pdr_exacto - demanda_lt)
+
+        # -----------------------------------------------------------------
+        # 4. REDONDEOS POR EMPAQUE O ENTEROS
+        # -----------------------------------------------------------------
+        if multiplo_empaque is not None and multiplo_empaque > 0:
+            emp = float(multiplo_empaque)
+            pdr_final = int(np.ceil(pdr_exacto / emp) * emp) if pdr_exacto > 0 else 0
+            max_final = int(np.ceil(max_exacto / emp) * emp) if max_exacto > 0 else 0
+            ss_final = int(np.ceil(ss_exacto))
+            q_final = int(np.ceil(q_exacto / emp) * emp) if q_exacto is not None else None
+        else:
+            pdr_final = int(np.ceil(pdr_exacto))
+            max_final = int(np.ceil(max_exacto))
+            ss_final = int(np.ceil(ss_exacto))
+            q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
+
+        # -----------------------------------------------------------------
+        # 5. REGLAS DE PISO, SEPARACIÓN Y GUARDIÁN FINAL DEL PDR
+        # -----------------------------------------------------------------
+        paso_min = int(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1
+
+        if max_final == 1:
+            pdr_final = 1
+
+        elif max_final > 1:
+            if pdr_final >= max_final:
+                pdr_final = max_final - paso_min
+                
+            if max_final >= 4:
+                pdr_piso_operativo = max(2, int(np.ceil(0.33 * max_final)))
+                if pdr_final < pdr_piso_operativo:
+                    pdr_final = pdr_piso_operativo
+
+        if max_final > 0 and pdr_final < 1:
+            pdr_final = 1
+            
+        if max_final > 1 and pdr_final >= max_final:
+            pdr_final = max(1, max_final - 1)
+
+        # -----------------------------------------------------------------
+        # 6. REGLAS DE AUDITORÍA Y CANDADO OPERATIVO
+        # -----------------------------------------------------------------
+        estatus_auditoria = "OK"
+        umbral_colapso = 2.0 if es_sku_prioritario else 5.0
+        pct_etiqueta = "200%" if es_sku_prioritario else "500%"
+        candado_activado = False
+
+        if series_historica is not None and len(series_historica) >= 6:
+            ventas_ultimos_3m = np.sum(series_historica[-3:])
+            if ventas_ultimos_3m == 0 and (inventario_actual is not None and float(inventario_actual) > 0):
+                estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
+                candado_activado = True
+
+        if not candado_activado and stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
+            ratio_colapso = float(stock_maximo_actual) / max(1.0, float(max_final))
+            if ratio_colapso >= umbral_colapso:
+                estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
+                candado_activado = True
+
+        if candado_activado:
+            if stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
+                max_final = int(stock_maximo_actual)
+            if pdr_actual is not None and float(pdr_actual) > 0:
+                pdr_final = int(pdr_actual)
 
     # -----------------------------------------------------------------
-    # 7. REGLAS DE AUDITORÍA Y CANDADO OPERATIVO
-    # -----------------------------------------------------------------
-    estatus_auditoria = "OK"
-    umbral_colapso = 2.0 if es_sku_prioritario else 5.0
-    pct_etiqueta = "200%" if es_sku_prioritario else "500%"
-    candado_activado = False
-
-    # 7.1 VERIFICACIÓN INDEPENDIENTE DE INVENTARIO FANTASMA
-    if series_historica is not None and len(series_historica) >= 6:
-        ventas_ultimos_3m = np.sum(series_historica[-3:])
-        if ventas_ultimos_3m == 0 and (inventario_actual is not None and float(inventario_actual) > 0):
-            estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
-            candado_activado = True
-
-    # 7.2 VERIFICACIÓN DE COLAPSO EXTREMO DE STOCK
-    if not candado_activado and stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
-        ratio_colapso = float(stock_maximo_actual) / max(1.0, float(max_final))
-        if ratio_colapso >= umbral_colapso:
-            estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
-            candado_activado = True
-
-    # 7.3 ACCIONAR EL CANDADO: Retener parámetros del ERP
-    if candado_activado:
-        if stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
-            max_final = int(stock_maximo_actual)
-        if pdr_actual is not None and float(pdr_actual) > 0:
-            pdr_final = int(pdr_actual)
-
-    # -----------------------------------------------------------------
-    # 8. REABASTO SUGERIDO NETO
+    # REABASTO SUGERIDO NETO
     # -----------------------------------------------------------------
     reabasto_sugerido = None
     if inventario_actual is not None:
