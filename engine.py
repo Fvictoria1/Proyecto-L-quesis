@@ -80,34 +80,54 @@ def descomposicion_sin_ciclo(series):
     forecast = avg_12 * trend_factor
     return float(max(0.0, forecast))
 
-def croston_tradicional(series, alpha=0.1):
-    """Método 8: Método de Croston para demanda intermitente."""
+def croston_tradicional(series, alpha=0.1, beta=None):
+    """
+    Método de Croston para demanda intermitente.
+    
+    Parameters:
+    - series: lista o array con la serie temporal.
+    - alpha: constante de suavización para la magnitud de la demanda (z).
+    - beta: constante de suavización para el intervalo entre demandas (p). 
+            Si es None, se asume beta = alpha.
+    """
+    if beta is None:
+        beta = alpha
+        
     series = np.array(series, dtype=float)
     nz_indices = np.where(series > 0)[0]
     
     if len(nz_indices) == 0:
         return 0.0
     
-    z = series[nz_indices[0]]
-    p = float(nz_indices[0] + 1) if nz_indices[0] > 0 else 1.0
+    # Inicialización con el primer elemento no nulo
+    first_nz = nz_indices[0]
+    z = series[first_nz]
+    p = float(first_nz + 1)
     q = 1
     
-    for t in range(len(series)):
+    # Iterar a partir del periodo posterior a la primera demanda no nula
+    for t in range(first_nz + 1, len(series)):
         if series[t] > 0:
             z = z + alpha * (series[t] - z)
-            p = p + alpha * (q - p)
+            p = p + beta * (q - p)
             q = 1
         else:
             q += 1
             
     return float(z / p) if p > 0 else 0.0
 
-def croston_sba(series, alpha=0.1, beta=0.1):
-    """Método 9: Syntetos-Boylan Approximation (SBA) para demanda intermitente/errática."""
-    croston_val = croston_tradicional(series, alpha)
+
+def croston_sba(series, alpha=0.1, beta=None):
+    """
+    Syntetos-Boylan Approximation (SBA) para demanda intermitente.
+    Aplica la corrección (1 - beta/2) para eliminar el sesgo positivo de Croston.
+    """
+    if beta is None:
+        beta = alpha
+        
+    croston_val = croston_tradicional(series, alpha=alpha, beta=beta)
     sba_val = (1.0 - (beta / 2.0)) * croston_val
     return float(sba_val)
-
 
 # =====================================================================
 # BLOQUE 2: EVALUACIÓN HISTÓRICA (BIAS & MAE EN VENTANAS)
