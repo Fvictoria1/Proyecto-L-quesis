@@ -57,7 +57,12 @@ def calcular_metricas_inventario(
     tasa_mantenimiento_anual=None,
     costo_ordenar=None,
     multiplo_empaque=None,
-    evento_maximo=None
+    evento_maximo=None,
+    # PARÁMETROS SWITCH DE REGLAS (TODOS DEFAULT TRUE)
+    regla_pronostico_cero=True,
+    regla_piso_evento=True,
+    regla_techo_cobertura=True,
+    regla_candado_auditoria=True
 ):
     # Sanitización de tipos contra pd.NA, NaNs, strings ("N/D") o Nones
     pronostico_m37 = _safe_float(pronostico_m37) or 0.0
@@ -103,9 +108,9 @@ def calcular_metricas_inventario(
     dias_max_cobertura = 90.0
 
     # -----------------------------------------------------------------
-    # REGLA DE PRONÓSTICO CERO ABSOLUTO (DATOS ATÍPICOS / SIN DEMANDA)
+    # REGLA 1: PRONÓSTICO CERO ABSOLUTO
     # -----------------------------------------------------------------
-    if pronostico_m37 == 0.0:
+    if pronostico_m37 == 0.0 and regla_pronostico_cero:
         stk_act = float(stock_maximo_actual) if (stock_maximo_actual is not None and stock_maximo_actual > 0) else 0.0
         pdr_act_val = float(pdr_actual) if (pdr_actual is not None and pdr_actual > 0) else 0.0
         
@@ -149,10 +154,10 @@ def calcular_metricas_inventario(
         pdr_piso_base = max(pdr_exacto, demanda_lt + ss_exacto)
 
         # -----------------------------------------------------------------
-        # 2. REGLA DE PISO POR EVENTO MÁXIMO
+        # REGLA 2: PISO POR EVENTO MÁXIMO
         # -----------------------------------------------------------------
         piso_evento_aplicado = False
-        if evento_maximo is not None:
+        if regla_piso_evento and evento_maximo is not None:
             try:
                 val_evt = float(evento_maximo)
                 if not np.isnan(val_evt) and val_evt > 0 and es_sku_prioritario:
@@ -166,12 +171,12 @@ def calcular_metricas_inventario(
                 pass
 
         # -----------------------------------------------------------------
-        # 3. TECHO SUPREMO POR DÍAS DE COBERTURA (ESTRICTO 90 DÍAS)
+        # REGLA 3: TECHO SUPREMO POR DÍAS DE COBERTURA (ESTRICTO 90 DÍAS)
         # -----------------------------------------------------------------
         tope_maximo_unidades = ddp_historico * dias_max_cobertura
         cap_cobertura_aplicado = False
 
-        if max_exacto > tope_maximo_unidades and ddp_historico > 0:
+        if regla_techo_cobertura and max_exacto > tope_maximo_unidades and ddp_historico > 0:
             cap_cobertura_aplicado = True
             max_exacto = tope_maximo_unidades
             
@@ -222,30 +227,31 @@ def calcular_metricas_inventario(
             pdr_final = max(1, max_final - 1)
 
         # -----------------------------------------------------------------
-        # 6. REGLAS DE AUDITORÍA Y CANDADO OPERATIVO
+        # REGLA 4: REGLAS DE AUDITORÍA Y CANDADO OPERATIVO
         # -----------------------------------------------------------------
         estatus_auditoria = "OK"
         umbral_colapso = 2.0 if es_sku_prioritario else 5.0
         pct_etiqueta = "200%" if es_sku_prioritario else "500%"
         candado_activado = False
 
-        if series_historica is not None and len(series_historica) >= 6:
-            ventas_ultimos_3m = np.sum(series_historica[-3:])
-            if ventas_ultimos_3m == 0 and (inventario_actual is not None and float(inventario_actual) > 0):
-                estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
-                candado_activado = True
+        if regla_candado_auditoria:
+            if series_historica is not None and len(series_historica) >= 6:
+                ventas_ultimos_3m = np.sum(series_historica[-3:])
+                if ventas_ultimos_3m == 0 and (inventario_actual is not None and float(inventario_actual) > 0):
+                    estatus_auditoria = "🚨 A REVISIÓN (Inventario Fantasma)"
+                    candado_activado = True
 
-        if not candado_activado and stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
-            ratio_colapso = float(stock_maximo_actual) / max(1.0, float(max_final))
-            if ratio_colapso >= umbral_colapso:
-                estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
-                candado_activado = True
+            if not candado_activado and stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
+                ratio_colapso = float(stock_maximo_actual) / max(1.0, float(max_final))
+                if ratio_colapso >= umbral_colapso:
+                    estatus_auditoria = f"⚠️ A REVISIÓN (Colapso > {pct_etiqueta})"
+                    candado_activado = True
 
-        if candado_activado:
-            if stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
-                max_final = int(stock_maximo_actual)
-            if pdr_actual is not None and float(pdr_actual) > 0:
-                pdr_final = int(pdr_actual)
+            if candado_activado:
+                if stock_maximo_actual is not None and float(stock_maximo_actual) > 0:
+                    max_final = int(stock_maximo_actual)
+                if pdr_actual is not None and float(pdr_actual) > 0:
+                    pdr_final = int(pdr_actual)
 
     # -----------------------------------------------------------------
     # REABASTO SUGERIDO NETO

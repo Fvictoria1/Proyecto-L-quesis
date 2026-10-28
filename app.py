@@ -336,7 +336,7 @@ def mostrar_login():
 
         st.markdown("""
 <div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.4.9 • Release Producción
+    Motor Láquesis v1.5.0 • Release Producción
 </div>
 """, unsafe_allow_html=True)
 
@@ -468,7 +468,7 @@ else:
     <span style="color: #F1F5F9; font-size: 13px; font-weight: 700;">Analizar Resultados</span>
 </div>
 <div style="color: #94A3B8; font-size: 12px; margin-bottom: 12px;">
-    Ejecuta la evaluación multimodelo e inspecciona los pronósticos e inventarios.
+    Configura las reglas activas y ejecuta el motor multimodelo.
 </div>
 """, unsafe_allow_html=True)
 
@@ -483,10 +483,10 @@ else:
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 34px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 17px; font-weight: 600; margin-bottom: 25px;">
-Demand & Forecasting Engine — Módulo de Administración Operativa v1.4.9
+Demand & Forecasting Engine — Módulo de Administración Operativa v1.5.0
 </p>
 <div style="color: #94A3B8; font-size: 14px; max-width: 680px; margin: 0 auto 30px auto; line-height: 1.6;">
-Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, Regla de Piso por Evento Máximo, Techo Supremo de Cobertura Homologado (90 días) y Candado de Auditoría Dinámico por Nivel de Servicio.
+Evalúa automáticamente 10 modelos estadísticos y de Machine Learning con protección adaptativa de inventarios, selección dinámica de reglas de negocio en tiempo de ejecución, Techo Supremo de Cobertura (90 días) y Candado de Auditoría.
 </div>
 <div style="background-color: #1A1F26; border: 1px dashed #00E5FF; border-radius: 12px; padding: 25px; max-width: 600px; margin: 0 auto;">
 <div style="color: #FFFFFF; font-size: 18px; font-weight: 700; margin-bottom: 8px;">
@@ -515,6 +515,45 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 
             df_input["SKU_norm"] = df_input["SKU"].apply(normalizar_sku)
             st.success(f"✅ Archivo cargado correctamente: **{len(df_input)} SKUs** detectados.")
+
+            # -----------------------------------------------------------------
+            # PANEL DE SWITCHES DE REGLAS DE NEGOCIO (PREVIO AL CÁLCULO)
+            # -----------------------------------------------------------------
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("🎛️ Configuración de Reglas de Negocio para el Cálculo")
+            st.markdown("Selecciona mediante los *switch buttons* qué reglas deseas aplicar en esta corrida (todas están activas por defecto):")
+
+            col_sw1, col_sw2 = st.columns(2, gap="medium")
+
+            with col_sw1:
+                toggle_cero = st.toggle(
+                    "🛡️ **Regla 1: Pronóstico Cero Absoluto**",
+                    value=True,
+                    key="toggle_regla_cero",
+                    help="En demanda nula ($M37=0$), retiene los parámetros del ERP o asigna piso inicial según prioridad."
+                )
+                toggle_piso = st.toggle(
+                    "🏔️ **Regla 2: Piso por Evento Máximo**",
+                    value=True,
+                    key="toggle_piso_evento",
+                    help="Garantiza que el PDR cubra al menos la compra máxima histórica registrada para SKUs prioritarios."
+                )
+
+            with col_sw2:
+                toggle_techo = st.toggle(
+                    "🧢 **Regla 3: Techo Supremo de Cobertura (90 Días)**",
+                    value=True,
+                    key="toggle_techo_cobertura",
+                    help="Restringe el Stock Máximo para no superar 90 días de cobertura basada en la venta real histórica."
+                )
+                toggle_candado = st.toggle(
+                    "🚨 **Regla 4: Candado de Auditoría Dinámico**",
+                    value=True,
+                    key="toggle_candado_auditoria",
+                    help="Activa 'A REVISIÓN' y congela parámetros ERP ante colapsos drásticos o inventario fantasma sin venta."
+                )
+
+            st.markdown("<br>", unsafe_allow_html=True)
 
         if st.session_state["confirmar_limpieza"]:
             st.markdown("""
@@ -545,7 +584,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 st.rerun()
         else:
             btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios (v1.4.9)", use_container_width=True)
+            btn_procesar_main = st.button("🚀 Procesar Pronósticos e Inventarios", use_container_width=True)
             
             if btn_procesar_main or btn_procesar_side:
                 resultados_totales = []
@@ -553,6 +592,12 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 progress_bar = st.progress(0.0)
                 total_skus = len(df_input)
                 
+                # OBTENCIÓN DE VALORES DE REGLAS DE SESIÓN
+                sw_cero = st.session_state.get("toggle_regla_cero", True)
+                sw_piso = st.session_state.get("toggle_piso_evento", True)
+                sw_techo = st.session_state.get("toggle_techo_cobertura", True)
+                sw_candado = st.session_state.get("toggle_candado_auditoria", True)
+
                 cols_historico = [col for col in df_input.columns if col.startswith("M") and col[1:].isdigit()]
                 
                 for idx, row in df_input.iterrows():
@@ -609,7 +654,11 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                             tasa_mantenimiento_anual=tasa_m,
                             costo_ordenar=costo_o,
                             multiplo_empaque=mult_e,
-                            evento_maximo=evt_max
+                            evento_maximo=evt_max,
+                            regla_pronostico_cero=sw_cero,
+                            regla_piso_evento=sw_piso,
+                            regla_techo_cobertura=sw_techo,
+                            regla_candado_auditoria=sw_candado
                         )
                         
                         label_cobertura = f"⚠️ Topado ({res_inv['Dias_Max_Cobertura']}d)" if res_inv.get("Cap_Cobertura_Aplicado", False) else "OK"
@@ -652,7 +701,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 titulo_act = titulo_calculo.strip() if titulo_calculo else ""
                 exito, msg = drive_utils.guardar_historial_drive(df_resultados, usuario_act, titulo_act)
                 
-                st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento v1.4.9 completado!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
+                st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento completado con reglas configuradas!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
                 st.rerun()
 
         # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
@@ -666,7 +715,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
             st.markdown("<br>", unsafe_allow_html=True)
 
             # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados (v1.4.9)")
+            st.subheader("📋 Resumen General de Resultados")
             st.dataframe(df_res, use_container_width=True)
             
             st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
@@ -726,7 +775,7 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                 
                 # Banner informativo si aplicó la regla de techo de cobertura
                 if "⚠️ Topado" in str(row_res.get("Cobertura_Max_Ajustada", "")):
-                    st.warning(f"⚠️ **Techo Supremo de Cobertura Activado:** El Stock Máximo de este SKU fue ajustado para no rebasar la política corporativa de días de inventario ({row_res['Cobertura_Max_Ajustada']}), conservando la brecha de reabasto.")
+                    st.warning(f"⚠️ **Techo Supremo de Cobertura Activado:** El Stock Máximo de este SKU fue adjusted para no rebasar la política corporativa de días de inventario ({row_res['Cobertura_Max_Ajustada']}), conservando la brecha de reabasto.")
 
                 if not filtro_inp.empty:
                     row_inp = filtro_inp.iloc[0]
