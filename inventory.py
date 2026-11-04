@@ -173,19 +173,13 @@ def calcular_metricas_inventario(
         # -----------------------------------------------------------------
         # REGLA 3: TECHO SUPREMO POR DÍAS DE COBERTURA (ESTRICTO 90 DÍAS)
         # -----------------------------------------------------------------
-        tope_maximo_unidades = ddp_historico * dias_max_cobertura
+        tope_maximo_unidades = round(ddp_historico * dias_max_cobertura, 4)
         cap_cobertura_aplicado = False
 
         if regla_techo_cobertura and max_exacto > tope_maximo_unidades and ddp_historico > 0:
             cap_cobertura_aplicado = True
             max_exacto = tope_maximo_unidades
-            
-            paso_min = float(multiplo_empaque) if (multiplo_empaque and multiplo_empaque > 0) else 1.0
-            pdr_exacto = min(max_exacto - paso_min, pdr_piso_base)
-            
-            if pdr_exacto < (demanda_lt + ss_exacto) and max_exacto > demanda_lt:
-                pdr_exacto = min(max_exacto - paso_min, demanda_lt + ss_exacto)
-                
+            pdr_exacto = max_exacto / 2.0
             ss_exacto = max(0.0, pdr_exacto - demanda_lt)
 
         # -----------------------------------------------------------------
@@ -193,13 +187,19 @@ def calcular_metricas_inventario(
         # -----------------------------------------------------------------
         if multiplo_empaque is not None and multiplo_empaque > 0:
             emp = float(multiplo_empaque)
-            pdr_final = int(np.ceil(pdr_exacto / emp) * emp) if pdr_exacto > 0 else 0
             max_final = int(np.ceil(max_exacto / emp) * emp) if max_exacto > 0 else 0
+            if cap_cobertura_aplicado:
+                pdr_final = int(np.ceil(max_final / 2.0)) if max_final > 0 else 0
+            else:
+                pdr_final = int(np.ceil(pdr_exacto / emp) * emp) if pdr_exacto > 0 else 0
             ss_final = int(np.ceil(ss_exacto))
             q_final = int(np.ceil(q_exacto / emp) * emp) if q_exacto is not None else None
         else:
-            pdr_final = int(np.ceil(pdr_exacto))
             max_final = int(np.ceil(max_exacto))
+            if cap_cobertura_aplicado:
+                pdr_final = int(np.ceil(max_final / 2.0)) if max_final > 0 else 0
+            else:
+                pdr_final = int(np.ceil(pdr_exacto)) if pdr_exacto > 0 else 0
             ss_final = int(np.ceil(ss_exacto))
             q_final = int(np.ceil(q_exacto)) if q_exacto is not None else None
 
