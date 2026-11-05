@@ -814,23 +814,60 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
                     x_pronostico_full = np.append(x_backtest, x_m37)
                     y_pronostico_full = np.append(backtest_m25_m36, val_m37)
                     
-                    fig, ax = plt.subplots(figsize=(10, 4.2))
+                    fig, ax = plt.subplots(figsize=(10, 4.5))
                     fig.patch.set_facecolor("#121519")
                     ax.set_facecolor("#1A1F26")
                     
-                    ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.05, label="Ventana Evaluación (M25-M36)")
-                    ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", color="#00E5FF", linewidth=2.2, zorder=3)
-                    ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
-                            marker="s", linestyle="--", color="#FF2A6D", linewidth=2.2, zorder=4)
-                    ax.scatter(x_m37, val_m37, color="#FF2A6D", s=90, edgecolor="#FFFFFF", linewidth=2, zorder=5)
+                    # Escala dinámica del eje Y para espacio suficiente superior
+                    max_val_plot = max(np.max(serie_hist), np.max(y_pronostico_full))
+                    ax.set_ylim(-1.0, max_val_plot * 1.25 + 1.5)
                     
-                    ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=12, fontweight='bold')
-                    ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8")
-                    ax.set_ylabel("Unidades Demanda", color="#94A3B8")
+                    ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.06, label="Ventana Evaluación (M25-M36)")
+                    ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", markersize=5.5, color="#00E5FF", linewidth=2.0, zorder=3)
+                    ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
+                            marker="s", markersize=5.5, linestyle="--", color="#FF2A6D", linewidth=2.0, zorder=4)
+                    ax.scatter(x_m37, val_m37, color="#FF2A6D", s=110, edgecolor="#FFFFFF", linewidth=2, zorder=5)
+                    
+                    # 1. ETIQUETAS PARA VENTAS HISTÓRICAS (SOLO PUNTOS > 0 PARA EVITAR SOBRECARGA DE CEROS)
+                    for x, y in zip(x_hist, serie_hist):
+                        if y > 0:
+                            lbl = f"{int(y)}" if y == int(y) else f"{y:.1f}"
+                            ax.annotate(
+                                lbl, (x, y), textcoords="offset points", xytext=(0, 7),
+                                ha='center', va='bottom', color="#00E5FF", fontsize=8.5, fontweight='bold',
+                                bbox=dict(boxstyle="round,pad=0.15", facecolor="#121519", edgecolor="none", alpha=0.7)
+                            )
+                    
+                    # 2. ETIQUETAS PARA PRONÓSTICO (BACKTEST M25-M36 Y M37)
+                    for x, y in zip(x_pronostico_full, y_pronostico_full):
+                        if x == 37:
+                            # Badge distintivo para M37
+                            ax.annotate(
+                                f"M37: {round(y, 2)}", (x, y), textcoords="offset points", xytext=(0, -20),
+                                ha='center', va='top', color="#FF2A6D", fontsize=9, fontweight='bold',
+                                bbox=dict(boxstyle="round,pad=0.25", facecolor="#161A20", edgecolor="#FF2A6D", alpha=0.9)
+                            )
+                        else:
+                            real_val = serie_hist[x-1] if x <= 36 else 0
+                            if y >= real_val:
+                                offset_y = 8
+                                va_align = 'bottom'
+                            else:
+                                offset_y = -12
+                                va_align = 'top'
+                                
+                            ax.annotate(
+                                f"{round(y, 1)}", (x, y), textcoords="offset points", xytext=(0, offset_y),
+                                ha='center', va=va_align, color="#FF2A6D", fontsize=8, fontweight='bold'
+                            )
+                    
+                    ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=11.5, fontweight='bold', pad=12)
+                    ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8", fontsize=9.5)
+                    ax.set_ylabel("Unidades Demanda", color="#94A3B8", fontsize=9.5)
                     ax.set_xticks(np.arange(0, 39, 3))
-                    ax.tick_params(colors="#94A3B8")
-                    ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left")
-                    ax.grid(True, linestyle=":", alpha=0.3, color="#2D3748")
+                    ax.tick_params(colors="#94A3B8", labelsize=9)
+                    ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left", fontsize=8.5)
+                    ax.grid(True, linestyle=":", alpha=0.25, color="#2D3748")
                     
                     st.pyplot(fig)
                 else:
