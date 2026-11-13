@@ -21,6 +21,12 @@ def aplicar_ui_kit():
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&display=swap');
 
+/* Ajuste de márgenes superiores del área principal para la Top Navbar */
+.block-container {
+    padding-top: 2.2rem !important;
+    padding-bottom: 2rem !important;
+}
+
 /* Posicionamiento de Toasts en Esquina Superior Izquierda */
 [data-testid="stToastContainer"] {
     top: 20px !important;
@@ -48,10 +54,23 @@ def aplicar_ui_kit():
         url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 90 Q 30 30, 60 70 T 120 40' stroke='rgba(0,229,255,0.035)' stroke-width='1.5' fill='none'/%3E%3Cpath d='M0 100 Q 40 50, 80 80 T 120 20' stroke='rgba(123,44,191,0.025)' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='60' cy='70' r='2.5' fill='rgba(0,229,255,0.05)'/%3E%3Ccircle cx='120' cy='40' r='3.5' fill='rgba(0,229,255,0.08)'/%3E%3C/svg%3E") !important;
 }
 
-/* Estilo de la Barra Lateral (Sidebar) */
+/* Barra Superior Horizontal (Top Navbar) */
+.top-navbar-container {
+    background-color: #161A20;
+    border: 1px solid #232A34;
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* Estilo de la Barra Lateral (Sidebar exclusiva para Guía de Operación) */
 [data-testid="stSidebar"] {
     background-color: #161A20 !important;
     border-right: 1px solid #232A34 !important;
+}
+[data-testid="stSidebar"] > div:first-child {
+    padding-top: 1.5rem !important;
 }
 
 /* Estilo de Inputs de Texto */
@@ -60,8 +79,8 @@ def aplicar_ui_kit():
     color: #F1F5F9 !important;
     border: 1px solid #2D3748 !important;
     border-radius: 8px !important;
-    padding: 12px 16px !important;
-    font-size: 15px !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
     transition: all 0.3s ease !important;
 }
 .stTextInput input:focus {
@@ -83,7 +102,7 @@ div.stButton > button:first-child:not([kind="secondary"]) {
     text-transform: uppercase !important;
     border: none !important;
     border-radius: 8px !important;
-    padding: 9px 16px !important;
+    padding: 8px 14px !important;
     box-shadow: 0 4px 15px rgba(0, 229, 255, 0.22) !important;
     transition: all 0.25s ease !important;
 }
@@ -101,32 +120,23 @@ div.stButton > button:disabled {
     cursor: not-allowed !important;
 }
 
-/* Botones Secundarios en Sidebar (Módulos disponibles acoplados a tarjeta SVG) */
-[data-testid="stSidebar"] div.stButton > button[kind="secondary"] {
+/* Botones Secundarios en Top Navbar (Módulos disponibles y botón Salir) */
+div[data-testid="column"] div.stButton > button[kind="secondary"] {
     background-color: #121519 !important;
     color: #CBD5E1 !important;
     border: 1px solid #2D3748 !important;
-    border-radius: 0 0 10px 10px !important;
+    border-radius: 8px !important;
     font-size: 12px !important;
     font-weight: 700 !important;
     letter-spacing: 0.8px !important;
     text-transform: uppercase !important;
-    padding: 8px 14px !important;
-    margin-top: -16px !important;
+    padding: 8px 12px !important;
     transition: all 0.25s ease !important;
 }
-[data-testid="stSidebar"] div.stButton > button[kind="secondary"]:hover {
+div[data-testid="column"] div.stButton > button[kind="secondary"]:hover {
     border-color: #00E5FF !important;
     color: #00E5FF !important;
     background-color: rgba(0, 229, 255, 0.08) !important;
-}
-
-/* Acoplamiento del botón primario activo con su tarjeta superior en Sidebar */
-[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
-    border-radius: 0 0 10px 10px !important;
-    font-size: 12px !important;
-    padding: 8px 14px !important;
-    margin-top: -16px !important;
 }
 
 /* Botón Secundario / Descargar Plantilla en Sidebar */
@@ -218,7 +228,7 @@ if not auth.requerir_autenticacion():
     st.stop()
 
 # ---------------------------------------------------------------------
-# FLUJO PRINCIPAL AUTENTICADO -> MENÚ PRINCIPAL (MOIRAN MENU)
+# FLUJO PRINCIPAL AUTENTICADO -> BARRA SUPERIOR HORIZONTAL (MOIRAN MENU)
 # ---------------------------------------------------------------------
 if "toast_pendiente" in st.session_state and st.session_state["toast_pendiente"]:
     st.toast(st.session_state["toast_pendiente"])
@@ -228,7 +238,7 @@ menu_principal = MoiranMenu(auth=auth, callback_limpieza=limpiar_sesion_global)
 modulo_actual = menu_principal.renderizar()
 
 # ---------------------------------------------------------------------
-# ENRUTADOR DE MÓDULOS INDEPENDIENTES
+# ENRUTADOR DE MÓDULOS INDEPENDIENTES (GUÍA EN SIDEBAR + WORKSPACE)
 # ---------------------------------------------------------------------
 if modulo_actual == "cloto":
     pass
