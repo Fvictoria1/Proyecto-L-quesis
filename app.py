@@ -54,6 +54,8 @@ def normalizar_texto(texto):
 def aplicar_ui_kit():
     st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&display=swap');
+
 /* Posicionamiento de Toasts en Esquina Superior Izquierda */
 [data-testid="stToastContainer"] {
     top: 20px !important;
@@ -311,11 +313,6 @@ if "toast_pendiente" in st.session_state and st.session_state["toast_pendiente"]
 # -----------------------------------------------------------------
 # BARRA LATERAL
 # -----------------------------------------------------------------
-svg_sidebar_logo = f"""
-<div style="display: flex; justify-content: center; align-items: center; width: 100%; margin: 0 auto; padding: 4px 0 14px 0;">
-{MoiranAuth.obtener_logo_svg(ancho="235", alto="68")}
-</div>
-"""
 st.sidebar.markdown(MoiranAuth.obtener_logo_html(compacto=True), unsafe_allow_html=True)
 
 st.sidebar.markdown(f"""
