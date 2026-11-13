@@ -51,21 +51,16 @@ class MoiranAuth:
             st.rerun()
 
     @staticmethod
-    def obtener_logo_svg(ancho: str = "100%", alto: str = "135") -> str:
-        """
-        Devuelve el isotipo vectorial SVG de la tríada Moiran SCPS:
-        - Nodo Superior (Ciano #00E5FF): Cloto (Rueda de hilar)
-        - Nodo Inferior Izquierdo (Esmeralda #10B981): Láquesis (Regla de medición)
-        - Nodo Inferior Derecho (Púrpura #7B2CBF): Átropo (Tijeras de corte)
-        """
+    def _obtener_emblema_svg(tamano: int = 115) -> str:
+        """Devuelve únicamente el emblema gráfico de la tríada (Cloto, Láquesis y Átropo)."""
         return f"""
-<svg width="{ancho}" height="{alto}" viewBox="0 0 475 138" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="{tamano}" height="{tamano}" viewBox="0 0 136 136" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink: 0;">
   <!-- Resplandores ambientales de la tríada -->
-  <circle cx="68" cy="32" r="26" fill="#00E5FF" fill-opacity="0.08"/>
-  <circle cx="32" cy="96" r="26" fill="#10B981" fill-opacity="0.08"/>
-  <circle cx="104" cy="96" r="26" fill="#7B2CBF" fill-opacity="0.10"/>
+  <circle cx="68" cy="32" r="26" fill="#00E5FF" fill-opacity="0.10"/>
+  <circle cx="32" cy="96" r="26" fill="#10B981" fill-opacity="0.10"/>
+  <circle cx="104" cy="96" r="26" fill="#7B2CBF" fill-opacity="0.12"/>
 
-  <!-- Lazos entrelazados de los 3 hilos (Tríada) -->
+  <!-- Lazos entrelazados de los 3 hilos -->
   <!-- Hilo Ciano (Cloto) -->
   <path d="M 48 32 C 46 62, 48 80, 41 90" stroke="#00E5FF" stroke-width="3.6" stroke-linecap="round"/>
   <path d="M 88 32 C 90 52, 89 65, 88 73" stroke="#00E5FF" stroke-width="3.6" stroke-linecap="round"/>
@@ -90,7 +85,6 @@ class MoiranAuth:
     <line x1="62.5" y1="29" x2="79.5" y2="29" stroke-width="1.3"/>
     <line x1="65" y1="23" x2="77" y2="35" stroke-width="1.3"/>
     <line x1="77" y1="23" x2="65" y2="35" stroke-width="1.3"/>
-    <!-- Soporte y huso de la rueca -->
     <path d="M 58 31 L 63 26 M 58 27 L 58 33" stroke-width="1.6"/>
     <path d="M 57 38 L 78 38 M 62 38 L 59 43 M 74 38 L 77 43 M 62 38 L 62 32" stroke-width="1.7"/>
   </g>
@@ -115,32 +109,70 @@ class MoiranAuth:
     <path d="M 106.5 101.8 L 98.5 86.5" stroke-width="2.1"/>
     <circle cx="104" cy="96.5" r="1.2" fill="#FFFFFF" stroke="none"/>
   </g>
-
-  <!-- TIPOGRAFÍA CORPORATIVA MOIRAN SCPS -->
-  <text x="148" y="56" fill="#FFFFFF" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-size="33" font-weight="800" letter-spacing="4">MOIRAN</text>
-  <text x="147" y="96" fill="#FFFFFF" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-size="42" font-weight="900" letter-spacing="3.5">SCPS</text>
-  <text x="149" y="116" fill="#E2E8F0" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-size="10.2" font-weight="700" letter-spacing="1.65">SUPPLY CHAIN PLANNING SYSTEM</text>
-
-  <!-- Barra de acento tricolor -->
-  <line x1="149" y1="126" x2="245" y2="126" stroke="#00E5FF" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="251" y1="126" x2="347" y2="126" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
-  <line x1="353" y1="126" x2="448" y2="126" stroke="#7B2CBF" stroke-width="2.5" stroke-linecap="round"/>
 </svg>
+"""
+
+    @classmethod
+    def obtener_logo_html(cls, compacto: bool = False) -> str:
+        """
+        Renderiza el logotipo completo (Emblema + Tipografía estilo clásico griego)
+        usando Flexbox HTML/CSS para evitar que Streamlit sanitice textos dentro de SVG.
+        """
+        fuente_griega = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&display=swap');
+</style>
+"""
+        if compacto:
+            emblema = cls._obtener_emblema_svg(tamano=56)
+            return f"""
+{fuente_griega}
+<div style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 4px 0 14px 0;">
+    {emblema}
+    <div style="display: flex; flex-direction: column; text-align: left;">
+        <div style="font-family: 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Georgia, serif; color: #FFFFFF; font-size: 18px; font-weight: 800; letter-spacing: 2px; line-height: 1.15;">
+            MOIRAN <span style="color: #00E5FF;">SCPS</span>
+        </div>
+        <div style="font-family: 'Segoe UI', Roboto, sans-serif; color: #94A3B8; font-size: 7.5px; font-weight: 700; letter-spacing: 1.1px; margin-top: 3px; text-transform: uppercase;">
+            SUPPLY CHAIN PLANNING
+        </div>
+        <div style="display: flex; gap: 3px; margin-top: 5px;">
+            <span style="height: 2px; width: 32%; background: #00E5FF; border-radius: 2px;"></span>
+            <span style="height: 2px; width: 32%; background: #10B981; border-radius: 2px;"></span>
+            <span style="height: 2px; width: 32%; background: #7B2CBF; border-radius: 2px;"></span>
+        </div>
+    </div>
+</div>
+"""
+
+        emblema = cls._obtener_emblema_svg(tamano=115)
+        return f"""
+{fuente_griega}
+<div style="display: flex; align-items: center; justify-content: center; gap: 22px; margin-bottom: 28px; flex-wrap: wrap;">
+    {emblema}
+    <div style="display: flex; flex-direction: column; text-align: left;">
+        <div style="font-family: 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Georgia, serif; color: #FFFFFF; font-size: clamp(28px, 3.2vw, 40px); font-weight: 900; letter-spacing: 4px; line-height: 1.1; text-shadow: 0 2px 14px rgba(0, 229, 255, 0.25);">
+            MOIRAN <span style="color: #00E5FF;">SCPS</span>
+        </div>
+        <div style="font-family: 'Cinzel', 'Segoe UI', serif; color: #E2E8F0; font-size: clamp(11px, 1.1vw, 13.5px); font-weight: 700; letter-spacing: 2.8px; margin-top: 6px; text-transform: uppercase;">
+            SUPPLY CHAIN PLANNING SYSTEM
+        </div>
+        <div style="display: flex; gap: 6px; margin-top: 10px; width: 100%;">
+            <span style="height: 3px; flex: 1; background: #00E5FF; border-radius: 2px; box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);"></span>
+            <span style="height: 3px; flex: 1; background: #10B981; border-radius: 2px; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);"></span>
+            <span style="height: 3px; flex: 1; background: #7B2CBF; border-radius: 2px; box-shadow: 0 0 8px rgba(123, 44, 191, 0.5);"></span>
+        </div>
+    </div>
+</div>
 """
 
     def renderizar_login(self) -> None:
         """Renderiza la interfaz visual de acceso de Moiran SCPS."""
-        col_left, col_center, col_right = st.columns([0.8, 1.8, 0.8])
+        col_left, col_center, col_right = st.columns([0.55, 2.3, 0.55])
 
         with col_center:
             st.markdown("<br>", unsafe_allow_html=True)
-
-            logo_html = f"""
-<div style="text-align: center; margin-bottom: 24px;">
-{self.obtener_logo_svg(ancho="100%", alto="132")}
-</div>
-"""
-            st.markdown(logo_html, unsafe_allow_html=True)
+            st.markdown(self.obtener_logo_html(compacto=False), unsafe_allow_html=True)
 
             with st.form("login_form", clear_on_submit=False):
                 usuario_input = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario", key="user_input")
