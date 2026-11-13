@@ -1,6 +1,7 @@
 import streamlit as st
 from auth import MoiranAuth
 from menu import MoiranMenu
+from laquesis import MoiranLaquesis
 
 # ---------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
@@ -92,6 +93,13 @@ div.stButton > button:first-child:not([kind="secondary"]):hover {
     box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4) !important;
     transform: translateY(-1px);
 }
+div.stButton > button:disabled {
+    background: #232A34 !important;
+    color: #64748B !important;
+    box-shadow: none !important;
+    border: 1px solid #2D3748 !important;
+    cursor: not-allowed !important;
+}
 
 /* Botones Secundarios en Sidebar (Módulos disponibles acoplados a tarjeta SVG) */
 [data-testid="stSidebar"] div.stButton > button[kind="secondary"] {
@@ -121,6 +129,28 @@ div.stButton > button:first-child:not([kind="secondary"]):hover {
     margin-top: -16px !important;
 }
 
+/* Botón Secundario / Descargar Plantilla en Sidebar */
+[data-testid="stSidebar"] div.stDownloadButton > button {
+    background-color: #1A1F26 !important;
+    color: #00E5FF !important;
+    border: 1px solid #00E5FF !important;
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    padding: 10px 14px !important;
+    transition: all 0.3s ease !important;
+}
+[data-testid="stSidebar"] div.stDownloadButton > button:hover {
+    background-color: rgba(0, 229, 255, 0.12) !important;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.3) !important;
+}
+
+/* Zona de Carga de Archivos */
+[data-testid="stFileUploadDropzone"] {
+    background-color: #1A1F26 !important;
+    border: 1px dashed #00E5FF !important;
+    border-radius: 10px !important;
+}
+
 /* Tarjeta Principal de Bienvenida */
 .welcome-card {
     background-color: #161A20;
@@ -131,6 +161,39 @@ div.stButton > button:first-child:not([kind="secondary"]):hover {
     margin-bottom: 25px;
     text-align: center;
 }
+
+/* Tarjeta KPI Personalizada Flotante y Centrada */
+.kpi-card {
+    background-color: #1A1F26;
+    border: 1px solid #2D3748;
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    min-height: 98px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+.kpi-card:hover {
+    border-color: #00E5FF;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+}
+.kpi-title {
+    color: #94A3B8;
+    font-size: clamp(10px, 0.85vw, 12px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+}
+.kpi-value {
+    color: #00E5FF;
+    font-size: clamp(12px, 1.1vw, 19px);
+    font-weight: 800;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -140,12 +203,8 @@ aplicar_ui_kit()
 # LIMPIEZA DE ESTADO GLOBAL AL CERRAR SESIÓN
 # ---------------------------------------------------------------------
 def limpiar_sesion_global():
-    keys_a_borrar = [
-        "df_resultados", "df_input", "detalle_competencia",
-        "df_resultados_v1_1", "df_input_v1_1", "detalle_competencia_v1_1",
-        "ultimo_guardado_msg", "toast_pendiente", "modulo_activo"
-    ]
-    for key in keys_a_borrar:
+    MoiranLaquesis.limpiar_estado()
+    for key in ["toast_pendiente", "modulo_activo"]:
         if key in st.session_state:
             del st.session_state[key]
     st.rerun()
@@ -169,11 +228,12 @@ menu_principal = MoiranMenu(auth=auth, callback_limpieza=limpiar_sesion_global)
 modulo_actual = menu_principal.renderizar()
 
 # ---------------------------------------------------------------------
-# ENRUTADOR DE MÓDULOS (ÁREA EN BLANCO LISTA PARA INTEGRACIÓN)
+# ENRUTADOR DE MÓDULOS INDEPENDIENTES
 # ---------------------------------------------------------------------
 if modulo_actual == "cloto":
     pass
 elif modulo_actual == "laquesis":
-    pass
+    modulo_laquesis = MoiranLaquesis(usuario_actual=auth.usuario_actual)
+    modulo_laquesis.renderizar()
 elif modulo_actual == "atropo":
     pass
