@@ -5,8 +5,8 @@ from auth import MoiranAuth
 class MoiranMenu:
     """
     Componente independiente encargado de renderizar la Barra Superior Horizontal
-    (Top Navbar) con el logo, navegación entre módulos (Cloto, Láquesis, Átropo),
-    estatus del usuario y la vista de bienvenida de Moiran SCPS.
+    conservando la identidad original del bloque de marca y perfil activo a la izquierda,
+    y desplazando los módulos (Cloto, Láquesis, Átropo) a la derecha.
     """
 
     MODULOS = [
@@ -14,19 +14,19 @@ class MoiranMenu:
             "id": "cloto",
             "nombre": "CLOTO",
             "subtitulo": "Inventario Central (CD)",
-            "svg": '<svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="13" stroke="#00E5FF" stroke-width="2.4"/><circle cx="18" cy="18" r="4" fill="#00E5FF" fill-opacity="0.25" stroke="#FFFFFF" stroke-width="1.8"/><line x1="18" y1="5" x2="18" y2="14" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="22" x2="18" y2="31" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="18" x2="14" y2="18" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="18" x2="31" y2="18" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/></svg>'
+            "svg": '<svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="13" stroke="#00E5FF" stroke-width="2.4"/><circle cx="18" cy="18" r="4" fill="#00E5FF" fill-opacity="0.25" stroke="#FFFFFF" stroke-width="1.8"/><line x1="18" y1="5" x2="18" y2="14" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="22" x2="18" y2="31" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="18" x2="14" y2="18" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/><line x1="22" y1="18" x2="31" y2="18" stroke="#00E5FF" stroke-width="2" stroke-linecap="round"/></svg>'
         },
         {
             "id": "laquesis",
             "nombre": "LÁQUESIS",
             "subtitulo": "Demanda & Pronósticos",
-            "svg": '<svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="11" width="24" height="14" rx="2.5" transform="rotate(-18 18 18)" stroke="#00E5FF" stroke-width="2.3" fill="#00E5FF" fill-opacity="0.08"/><line x1="11" y1="15.5" x2="12.5" y2="20" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/><line x1="15.5" y1="14" x2="16.5" y2="17" stroke="#00E5FF" stroke-width="1.6" stroke-linecap="round"/><line x1="19.5" y1="12.8" x2="21" y2="17.3" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/><line x1="23.5" y1="11.5" x2="24.5" y2="14.5" stroke="#00E5FF" stroke-width="1.6" stroke-linecap="round"/></svg>'
+            "svg": '<svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="11" width="24" height="14" rx="2.5" transform="rotate(-18 18 18)" stroke="#00E5FF" stroke-width="2.3" fill="#00E5FF" fill-opacity="0.08"/><line x1="11" y1="15.5" x2="12.5" y2="20" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/><line x1="15.5" y1="14" x2="16.5" y2="17" stroke="#00E5FF" stroke-width="1.6" stroke-linecap="round"/><line x1="19.5" y1="12.8" x2="21" y2="17.3" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/><line x1="23.5" y1="11.5" x2="24.5" y2="14.5" stroke="#00E5FF" stroke-width="1.6" stroke-linecap="round"/></svg>'
         },
         {
             "id": "atropo",
             "nombre": "ÁTROPO",
             "subtitulo": "Ejecución de Reabasto",
-            "svg": '<svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="11.5" r="4.2" stroke="#00E5FF" stroke-width="2.2"/><circle cx="10.5" cy="24.5" r="4.2" stroke="#00E5FF" stroke-width="2.2"/><line x1="14.2" y1="13.5" x2="29" y2="24.5" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round"/><line x1="14.2" y1="22.5" x2="29" y2="11.5" stroke="#00E5FF" stroke-width="2.3" stroke-linecap="round"/><circle cx="19.5" cy="18" r="1.6" fill="#7B2CBF" stroke="#FFFFFF" stroke-width="1"/></svg>'
+            "svg": '<svg width="22" height="22" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="11.5" r="4.2" stroke="#00E5FF" stroke-width="2.2"/><circle cx="10.5" cy="24.5" r="4.2" stroke="#00E5FF" stroke-width="2.2"/><line x1="14.2" y1="13.5" x2="29" y2="24.5" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round"/><line x1="14.2" y1="22.5" x2="29" y2="11.5" stroke="#00E5FF" stroke-width="2.3" stroke-linecap="round"/><circle cx="19.5" cy="18" r="1.6" fill="#7B2CBF" stroke="#FFFFFF" stroke-width="1"/></svg>'
         }
     ]
 
@@ -45,34 +45,48 @@ class MoiranMenu:
         st.session_state["modulo_activo"] = modulo_id
 
     def renderizar_top_navbar(self):
-        """Renderiza la barra superior horizontal con logo, selector de módulos y perfil."""
+        """Renderiza la barra superior horizontal según el diseño del mock-up."""
         st.markdown('<div class="top-navbar-container">', unsafe_allow_html=True)
 
-        col_logo, col_cloto, col_laq, col_atr, col_perfil = st.columns(
-            [1.6, 1.35, 1.45, 1.35, 1.85],
-            vertical_alignment="center"
+        # Izquierda: Identidad Marca + Perfil Activo | Centro: Espaciador | Derecha: 3 Módulos
+        col_identidad, col_espacio, col_cloto, col_laq, col_atr = st.columns(
+            [1.9, 1.35, 1.15, 1.2, 1.15],
+            vertical_alignment="top"
         )
 
-        # 1. Logo Compacto Moiran SCPS
-        with col_logo:
-            logo_top_html = (
-                '<div style="display:flex;align-items:center;gap:10px;padding:4px 0;">'
-                '<svg width="34" height="34" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">'
+        # 1. Bloque Izquierdo: Logo MOIRAN SCPS + Tarjeta PERFIL ACTIVO + Botón Cerrar Sesión
+        with col_identidad:
+            identidad_html = (
+                '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'
+                '<svg width="42" height="42" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">'
                 '<circle cx="30" cy="30" r="25" fill="#00E5FF" fill-opacity="0.08"/>'
-                '<circle cx="30" cy="18" r="7.5" stroke="#00E5FF" stroke-width="2.5"/>'
-                '<circle cx="19.5" cy="36.5" r="7.5" stroke="#7B2CBF" stroke-width="2.5"/>'
-                '<circle cx="40.5" cy="36.5" r="7.5" stroke="#10B981" stroke-width="2.5"/>'
+                '<circle cx="30" cy="18" r="7.5" stroke="#00E5FF" stroke-width="2.4"/>'
+                '<circle cx="19.5" cy="36.5" r="7.5" stroke="#7B2CBF" stroke-width="2.4"/>'
+                '<circle cx="40.5" cy="36.5" r="7.5" stroke="#10B981" stroke-width="2.4"/>'
+                '<path d="M 30 25.5 L 24 31 M 30 25.5 L 36 31 M 27 36.5 L 33 36.5" stroke="#FFFFFF" stroke-width="1.6" stroke-linecap="round"/>'
                 '<circle cx="30" cy="29" r="3" fill="#FFFFFF"/>'
                 '</svg>'
                 '<div>'
-                '<div style="font-family:\'Cinzel\',serif;color:#FFFFFF;font-size:16px;font-weight:900;letter-spacing:1.5px;line-height:1.1;">MOIRAN SCPS</div>'
-                '<div style="color:#00E5FF;font-size:9px;font-weight:700;letter-spacing:1px;">SUPPLY CHAIN PLANNING</div>'
+                '<div style="font-family:\'Cinzel\',serif;color:#FFFFFF;font-size:19px;font-weight:900;letter-spacing:2px;line-height:1.1;">MOIRAN SCPS</div>'
+                '<div style="color:#00E5FF;font-size:9px;font-weight:700;letter-spacing:1.3px;margin-top:2px;">SUPPLY CHAIN PLANNING</div>'
                 '</div>'
+                '</div>'
+                '<div style="background-color:#1A1F26;border:1px solid #2D3748;border-radius:10px 10px 0 0;padding:10px 14px;">'
+                '<div style="color:#64748B;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:5px;">PERFIL ACTIVO</div>'
+                f'<div style="color:#F1F5F9;font-size:12px;font-weight:600;margin-bottom:2px;">👤 Usuario: <span style="color:#00E5FF;font-weight:700;">{self.auth.usuario_actual}</span></div>'
+                '<div style="color:#F1F5F9;font-size:12px;font-weight:600;">🟢 Estado: <span style="color:#10B981;font-weight:700;">En Línea</span></div>'
                 '</div>'
             )
-            st.markdown(logo_top_html, unsafe_allow_html=True)
+            st.markdown(identidad_html, unsafe_allow_html=True)
 
-        # 2. Botones de Módulos con Ícono SVG Superior
+            if st.button("🔒 CERRAR SESIÓN", key="topnav_btn_logout", type="secondary", use_container_width=True):
+                self.auth.cerrar_sesion(callback_limpieza=self.callback_limpieza)
+
+        # 2. Espaciador central limpio
+        with col_espacio:
+            st.empty()
+
+        # 3. Tarjetas de Módulos desplazadas a la derecha
         cols_modulos = [col_cloto, col_laq, col_atr]
         activo_actual = self.modulo_activo
 
@@ -81,6 +95,7 @@ class MoiranMenu:
                 es_activo = (activo_actual == mod["id"])
                 borde = "1.5px solid #00E5FF" if es_activo else "1px solid #2D3748"
                 fondo = "rgba(0, 229, 255, 0.12)" if es_activo else "#1A1F26"
+                sombra = "box-shadow: 0 0 15px rgba(0, 229, 255, 0.18);" if es_activo else ""
                 badge = (
                     '<span style="color:#00E5FF;font-size:9px;font-weight:800;">● ACTIVO</span>'
                     if es_activo else
@@ -88,12 +103,14 @@ class MoiranMenu:
                 )
 
                 header_mod_html = (
-                    f'<div style="background-color:{fondo};border:{borde};border-bottom:none;border-radius:8px 8px 0 0;padding:6px 10px;display:flex;align-items:center;justify-content:space-between;">'
-                    f'<div style="display:flex;align-items:center;gap:7px;">'
+                    f'<div style="background-color:{fondo};border:{borde};border-bottom:none;border-radius:10px 10px 0 0;padding:12px 12px 10px 12px;margin-top:8px;{sombra}">'
+                    f'<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">'
+                    f'<div style="display:flex;align-items:center;gap:8px;">'
                     f'{mod["svg"]}'
-                    f'<span style="color:#94A3B8;font-size:10px;font-weight:600;">{mod["subtitulo"]}</span>'
+                    f'<div style="color:#94A3B8;font-size:11px;font-weight:600;line-height:1.25;">{mod["subtitulo"]}</div>'
                     f'</div>'
                     f'{badge}'
+                    f'</div>'
                     f'</div>'
                 )
                 st.markdown(header_mod_html, unsafe_allow_html=True)
@@ -108,21 +125,6 @@ class MoiranMenu:
                     if not es_activo:
                         self.seleccionar_modulo(mod["id"])
                         st.rerun()
-
-        # 3. Estatus del Usuario y Cierre de Sesión
-        with col_perfil:
-            c_info, c_logout = st.columns([1.25, 0.95], vertical_alignment="center")
-            with c_info:
-                user_html = (
-                    f'<div style="background-color:#1A1F26;border:1px solid #2D3748;border-radius:8px;padding:7px 10px;line-height:1.25;">'
-                    f'<div style="color:#F1F5F9;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">👤 {self.auth.usuario_actual}</div>'
-                    f'<div style="color:#10B981;font-size:10px;font-weight:700;">🟢 En Línea</div>'
-                    f'</div>'
-                )
-                st.markdown(user_html, unsafe_allow_html=True)
-            with c_logout:
-                if st.button("🔒 Salir", key="topnav_btn_logout", type="secondary", use_container_width=True):
-                    self.auth.cerrar_sesion(callback_limpieza=self.callback_limpieza)
 
         st.markdown('</div>', unsafe_allow_html=True)
 

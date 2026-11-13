@@ -59,7 +59,7 @@ def aplicar_ui_kit():
     background-color: #161A20;
     border: 1px solid #232A34;
     border-radius: 12px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     margin-bottom: 18px;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
@@ -120,23 +120,32 @@ div.stButton > button:disabled {
     cursor: not-allowed !important;
 }
 
-/* Botones Secundarios en Top Navbar (Módulos disponibles y botón Salir) */
+/* Acoplamiento de botones secundarios en la Barra Superior Horizontal */
 div[data-testid="column"] div.stButton > button[kind="secondary"] {
     background-color: #121519 !important;
     color: #CBD5E1 !important;
     border: 1px solid #2D3748 !important;
-    border-radius: 8px !important;
+    border-radius: 0 0 10px 10px !important;
     font-size: 12px !important;
     font-weight: 700 !important;
     letter-spacing: 0.8px !important;
     text-transform: uppercase !important;
     padding: 8px 12px !important;
+    margin-top: -16px !important;
     transition: all 0.25s ease !important;
 }
 div[data-testid="column"] div.stButton > button[kind="secondary"]:hover {
     border-color: #00E5FF !important;
     color: #00E5FF !important;
     background-color: rgba(0, 229, 255, 0.08) !important;
+}
+
+/* Acoplamiento del botón primario activo con su tarjeta superior en Top Navbar */
+div[data-testid="column"] div.stButton > button[kind="primary"] {
+    border-radius: 0 0 10px 10px !important;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+    margin-top: -16px !important;
 }
 
 /* Botón Secundario / Descargar Plantilla en Sidebar */
