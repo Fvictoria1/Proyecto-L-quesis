@@ -72,23 +72,53 @@ def aplicar_ui_kit():
     font-weight: 600 !important;
 }
 
-/* Botones Principales (Gradiente Ciano / Glow) */
-div.stButton > button:first-child {
+/* Botones Primarios (Gradiente Ciano / Glow) */
+div.stButton > button[kind="primary"],
+div.stButton > button:first-child:not([kind="secondary"]) {
     background: linear-gradient(135deg, #00E5FF 0%, #0088FF 100%) !important;
     color: #090B0E !important;
     font-weight: 800 !important;
-    letter-spacing: 1.2px !important;
+    letter-spacing: 1.1px !important;
     text-transform: uppercase !important;
     border: none !important;
     border-radius: 8px !important;
-    padding: 10px 20px !important;
-    box-shadow: 0 4px 15px rgba(0, 229, 255, 0.2) !important;
-    transition: all 0.3s ease !important;
+    padding: 9px 16px !important;
+    box-shadow: 0 4px 15px rgba(0, 229, 255, 0.22) !important;
+    transition: all 0.25s ease !important;
 }
-div.stButton > button:first-child:hover {
+div.stButton > button[kind="primary"]:hover,
+div.stButton > button:first-child:not([kind="secondary"]):hover {
     background: linear-gradient(135deg, #33EBFF 0%, #1A94FF 100%) !important;
     box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4) !important;
     transform: translateY(-1px);
+}
+
+/* Botones Secundarios en Sidebar (Módulos disponibles acoplados a tarjeta SVG) */
+[data-testid="stSidebar"] div.stButton > button[kind="secondary"] {
+    background-color: #121519 !important;
+    color: #CBD5E1 !important;
+    border: 1px solid #2D3748 !important;
+    border-radius: 0 0 10px 10px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.8px !important;
+    text-transform: uppercase !important;
+    padding: 8px 14px !important;
+    margin-top: -16px !important;
+    transition: all 0.25s ease !important;
+}
+[data-testid="stSidebar"] div.stButton > button[kind="secondary"]:hover {
+    border-color: #00E5FF !important;
+    color: #00E5FF !important;
+    background-color: rgba(0, 229, 255, 0.08) !important;
+}
+
+/* Acoplamiento del botón primario activo con su tarjeta superior en Sidebar */
+[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
+    border-radius: 0 0 10px 10px !important;
+    font-size: 12px !important;
+    padding: 8px 14px !important;
+    margin-top: -16px !important;
 }
 
 /* Tarjeta Principal de Bienvenida */
@@ -136,4 +166,14 @@ if "toast_pendiente" in st.session_state and st.session_state["toast_pendiente"]
     del st.session_state["toast_pendiente"]
 
 menu_principal = MoiranMenu(auth=auth, callback_limpieza=limpiar_sesion_global)
-menu_principal.renderizar()
+modulo_actual = menu_principal.renderizar()
+
+# ---------------------------------------------------------------------
+# ENRUTADOR DE MÓDULOS (ÁREA EN BLANCO LISTA PARA INTEGRACIÓN)
+# ---------------------------------------------------------------------
+if modulo_actual == "cloto":
+    pass
+elif modulo_actual == "laquesis":
+    pass
+elif modulo_actual == "atropo":
+    pass
