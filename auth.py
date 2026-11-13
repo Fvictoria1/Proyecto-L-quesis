@@ -4,7 +4,7 @@ import streamlit as st
 class MoiranAuth:
     """
     Objeto independiente de autenticación y pantalla de acceso para Moiran SCPS.
-    Gestiona el estado de sesión, validación de credenciales y UI de Log-on.
+    Gestiona el estado de sesión, validación de credenciales e identidad visual.
     """
 
     def __init__(self, usuario_default: str = "Fvictoria1", password_default: str = "4161"):
@@ -50,6 +50,84 @@ class MoiranAuth:
         else:
             st.rerun()
 
+    @staticmethod
+    def obtener_logo_svg(ancho: str = "100%", alto: str = "135") -> str:
+        """
+        Devuelve el isotipo vectorial SVG de la tríada Moiran SCPS:
+        - Nodo Superior (Ciano #00E5FF): Cloto (Rueda de hilar)
+        - Nodo Inferior Izquierdo (Esmeralda #10B981): Láquesis (Regla de medición)
+        - Nodo Inferior Derecho (Púrpura #7B2CBF): Átropo (Tijeras de corte)
+        """
+        return f"""
+<svg width="{ancho}" height="{alto}" viewBox="0 0 475 138" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Resplandores ambientales de la tríada -->
+  <circle cx="68" cy="32" r="26" fill="#00E5FF" fill-opacity="0.08"/>
+  <circle cx="32" cy="96" r="26" fill="#10B981" fill-opacity="0.08"/>
+  <circle cx="104" cy="96" r="26" fill="#7B2CBF" fill-opacity="0.10"/>
+
+  <!-- Lazos entrelazados de los 3 hilos (Tríada) -->
+  <!-- Hilo Ciano (Cloto) -->
+  <path d="M 48 32 C 46 62, 48 80, 41 90" stroke="#00E5FF" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M 88 32 C 90 52, 89 65, 88 73" stroke="#00E5FF" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M 81 48 C 72 58, 61 65, 53 70" stroke="#00E5FF" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M 88 83 C 90 91, 92 96, 94 100" stroke="#00E5FF" stroke-width="3.6" stroke-linecap="round"/>
+
+  <!-- Hilo Esmeralda (Láquesis) -->
+  <path d="M 16 84 C 24 72, 34 65, 42 60" stroke="#10B981" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M 38 115 C 58 112, 74 96, 90 96" stroke="#10B981" stroke-width="3.6" stroke-linecap="round"/>
+
+  <!-- Hilo Púrpura (Átropo) -->
+  <path d="M 74 58 C 84 72, 102 74, 118 84" stroke="#7B2CBF" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M 44 92 C 52 92, 59 94, 64 97" stroke="#7B2CBF" stroke-width="3.4" stroke-linecap="round"/>
+  <path d="M 74 103 C 83 109, 92 114, 100 115" stroke="#7B2CBF" stroke-width="3.6" stroke-linecap="round"/>
+
+  <!-- NODO SUPERIOR: CLOTO (Ciano #00E5FF - Rueda) -->
+  <circle cx="68" cy="32" r="20" fill="#121519" stroke="#00E5FF" stroke-width="3.6"/>
+  <g stroke="#00E5FF" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="71" cy="29" r="8.5" stroke-width="1.8"/>
+    <circle cx="71" cy="29" r="1.8" fill="#00E5FF"/>
+    <line x1="71" y1="20.5" x2="71" y2="37.5" stroke-width="1.3"/>
+    <line x1="62.5" y1="29" x2="79.5" y2="29" stroke-width="1.3"/>
+    <line x1="65" y1="23" x2="77" y2="35" stroke-width="1.3"/>
+    <line x1="77" y1="23" x2="65" y2="35" stroke-width="1.3"/>
+    <!-- Soporte y huso de la rueca -->
+    <path d="M 58 31 L 63 26 M 58 27 L 58 33" stroke-width="1.6"/>
+    <path d="M 57 38 L 78 38 M 62 38 L 59 43 M 74 38 L 77 43 M 62 38 L 62 32" stroke-width="1.7"/>
+  </g>
+
+  <!-- NODO INFERIOR IZQUIERDO: LÁQUESIS (Esmeralda #10B981 - Regla) -->
+  <circle cx="32" cy="96" r="20" fill="#121519" stroke="#10B981" stroke-width="3.6"/>
+  <g transform="translate(32, 96) rotate(-45)" stroke="#10B981" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-12" y="-5" width="24" height="10" rx="1.5" stroke-width="1.8" fill="none"/>
+    <line x1="-8" y1="-5" x2="-8" y2="-1.5" stroke-width="1.4"/>
+    <line x1="-4" y1="-5" x2="-4" y2="-2.5" stroke-width="1.4"/>
+    <line x1="0" y1="-5" x2="0" y2="-1" stroke-width="1.4"/>
+    <line x1="4" y1="-5" x2="4" y2="-2.5" stroke-width="1.4"/>
+    <line x1="8" y1="-5" x2="8" y2="-1.5" stroke-width="1.4"/>
+  </g>
+
+  <!-- NODO INFERIOR DERECHO: ÁTROPO (Púrpura #7B2CBF - Tijeras) -->
+  <circle cx="104" cy="96" r="20" fill="#121519" stroke="#7B2CBF" stroke-width="3.6"/>
+  <g stroke="#7B2CBF" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="99.5" cy="104.5" r="3.3" stroke-width="1.8" fill="none"/>
+    <circle cx="108.5" cy="104.5" r="3.3" stroke-width="1.8" fill="none"/>
+    <path d="M 101.5 101.8 L 109.5 86.5" stroke-width="2.1"/>
+    <path d="M 106.5 101.8 L 98.5 86.5" stroke-width="2.1"/>
+    <circle cx="104" cy="96.5" r="1.2" fill="#FFFFFF" stroke="none"/>
+  </g>
+
+  <!-- TIPOGRAFÍA CORPORATIVA MOIRAN SCPS -->
+  <text x="148" y="56" fill="#FFFFFF" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-size="33" font-weight="800" letter-spacing="4">MOIRAN</text>
+  <text x="147" y="96" fill="#FFFFFF" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-size="42" font-weight="900" letter-spacing="3.5">SCPS</text>
+  <text x="149" y="116" fill="#E2E8F0" font-family="'Segoe UI', Roboto, Arial, sans-serif" font-size="10.2" font-weight="700" letter-spacing="1.65">SUPPLY CHAIN PLANNING SYSTEM</text>
+
+  <!-- Barra de acento tricolor -->
+  <line x1="149" y1="126" x2="245" y2="126" stroke="#00E5FF" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="251" y1="126" x2="347" y2="126" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="353" y1="126" x2="448" y2="126" stroke="#7B2CBF" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
+"""
+
     def renderizar_login(self) -> None:
         """Renderiza la interfaz visual de acceso de Moiran SCPS."""
         col_left, col_center, col_right = st.columns([0.8, 1.8, 0.8])
@@ -57,26 +135,12 @@ class MoiranAuth:
         with col_center:
             st.markdown("<br>", unsafe_allow_html=True)
 
-            svg_logo_login = """
-<div style="text-align: center; margin-bottom: 25px;">
-<svg width="100%" height="105" viewBox="0 0 450 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="45" cy="50" r="38" fill="#00E5FF" fill-opacity="0.06"/>
-<path d="M 22 15 L 22 82 L 78 82" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
-<path d="M 73 82 L 85 70" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round"/>
-<path d="M 18 78 Q 32 80, 44 28 T 74 68 Q 78 64, 83 55" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-<path d="M 18 80 Q 32 82, 44 30 T 74 66, 83 57" stroke="#7B2CBF" stroke-width="2" stroke-linecap="round" fill="none" stroke-opacity="0.7"/>
-<circle cx="25" cy="78" r="3.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.5"/>
-<circle cx="44" cy="28" r="3.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.5"/>
-<circle cx="65" cy="60" r="3.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.5"/>
-<circle cx="83" cy="55" r="5.5" fill="#00E5FF" stroke="#FFFFFF" stroke-width="2"/>
-<text x="108" y="49" fill="#FFFFFF" font-family="'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" letter-spacing="3.5">MOIRAN SCPS</text>
-<text x="110" y="71" fill="#00E5FF" font-family="'Segoe UI', Roboto, sans-serif" font-size="9.5" font-weight="700" letter-spacing="2.2">SUPPLY CHAIN PLANNING SYSTEM</text>
-<line x1="110" y1="82" x2="425" y2="82" stroke="#2A323D" stroke-width="1.5"/>
-<line x1="110" y1="82" x2="235" y2="82" stroke="#00E5FF" stroke-width="2.5"/>
-</svg>
+            logo_html = f"""
+<div style="text-align: center; margin-bottom: 24px;">
+{self.obtener_logo_svg(ancho="100%", alto="132")}
 </div>
 """
-            st.markdown(svg_logo_login, unsafe_allow_html=True)
+            st.markdown(logo_html, unsafe_allow_html=True)
 
             with st.form("login_form", clear_on_submit=False):
                 usuario_input = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario", key="user_input")
