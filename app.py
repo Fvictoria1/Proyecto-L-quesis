@@ -311,22 +311,12 @@ if "toast_pendiente" in st.session_state and st.session_state["toast_pendiente"]
 # -----------------------------------------------------------------
 # BARRA LATERAL
 # -----------------------------------------------------------------
-svg_sidebar_logo = """
-<div style="display: flex; justify-content: center; align-items: center; width: 100%; margin: 0 auto; padding: 5px 0 15px 0;">
-<svg width="220" height="60" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="28" cy="30" r="22" fill="#00E5FF" fill-opacity="0.08"/>
-<path d="M 12 10 L 12 48 L 48 48" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
-<path d="M 42 48 L 51 39" stroke="#00E5FF" stroke-width="2.5" stroke-linecap="round"/>
-<path d="M 10 45 Q 18 47, 26 15 T 42 40 Q 45 37, 50 31" stroke="#00E5FF" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-<path d="M 10 46 Q 18 48, 26 16 T 42 41 Q 45 38, 50 32" stroke="#7B2CBF" stroke-width="1.6" stroke-linecap="round" fill="none" stroke-opacity="0.7"/>
-<circle cx="26" cy="15" r="2.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.2"/>
-<circle cx="50" cy="31" r="4" fill="#00E5FF" stroke="#FFFFFF" stroke-width="1.5"/>
-<text x="64" y="32" fill="#FFFFFF" font-family="'Segoe UI', Roboto, sans-serif" font-size="19" font-weight="800" letter-spacing="2.5">LÁQUESIS</text>
-<text x="65" y="46" fill="#00E5FF" font-family="'Segoe UI', Roboto, sans-serif" font-size="7" font-weight="700" letter-spacing="1">DEMAND & FORECASTING</text>
-</svg>
+svg_sidebar_logo = f"""
+<div style="display: flex; justify-content: center; align-items: center; width: 100%; margin: 0 auto; padding: 4px 0 14px 0;">
+{MoiranAuth.obtener_logo_svg(ancho="235", alto="68")}
 </div>
 """
-st.sidebar.markdown(svg_sidebar_logo, unsafe_allow_html=True)
+st.sidebar.markdown(MoiranAuth.obtener_logo_html(compacto=True), unsafe_allow_html=True)
 
 st.sidebar.markdown(f"""
 <div style="background-color: #1A1F26; border: 1px solid #2D3748; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
