@@ -6,13 +6,14 @@ import inventory
 import matplotlib.pyplot as plt
 import drive_utils
 from datetime import datetime
+from auth import MoiranAuth
 
 # ---------------------------------------------------------------------
 # CONFIGURACIÓN DE PÁGINA
 # ---------------------------------------------------------------------
 st.set_page_config(
-    page_title="Láquesis - Demand & Forecasting Engine",
-    page_icon="⚡",
+    page_title="Moiran SCPS - Supply Chain Planning System",
+    page_icon="🌐",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -194,19 +195,15 @@ div.stButton > button:disabled {
 aplicar_ui_kit()
 
 # ---------------------------------------------------------------------
-# GESTIÓN DE SESIÓN Y AUTENTICACIÓN
+# INICIALIZACIÓN DE AUTENTICACIÓN Y ESTADO DE WORKSPACE
 # ---------------------------------------------------------------------
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+auth = MoiranAuth()
 
 if "uploader_key" not in st.session_state:
     st.session_state["uploader_key"] = 0
 
 if "confirmar_limpieza" not in st.session_state:
     st.session_state["confirmar_limpieza"] = False
-
-USUARIO_CORRECTO = "Fvictoria1"
-PASSWORD_CORRECTO = "4161"
 
 def limpiar_todo():
     st.session_state["confirmar_limpieza"] = False
@@ -278,8 +275,7 @@ def render_historial_listado(archivos_drive, key_prefix="hist"):
                 nuevo_tit = st.text_input("Nuevo Título:", value=titulo_display, key=f"{key_prefix}_ren_input_{file_id}_{idx_f}")
                 if st.button("💾 Confirmar", key=f"{key_prefix}_ren_btn_{file_id}_{idx_f}"):
                     if nuevo_tit.strip():
-                        usr_act = st.session_state.get('usuario_actual', 'Fvictoria1')
-                        exito_r, msg_r = drive_utils.renombrar_archivo_drive(file_id, nuevo_tit, usr_act)
+                        exito_r, msg_r = drive_utils.renombrar_archivo_drive(file_id, nuevo_tit, auth.usuario_actual)
                         if exito_r:
                             st.session_state["toast_pendiente"] = f"✏️ Archivo renombrado a '🏷️ {nuevo_tit}'"
                             st.rerun()
@@ -300,71 +296,22 @@ def render_historial_listado(archivos_drive, key_prefix="hist"):
         st.markdown("<hr style='border:0; height:1px; background:#232A34; margin: 8px 0 12px 0;'>", unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------
-# PANTALLA DE LOG-ON
+# GUARDIA DE ACCESO (OBJETO INDEPENDIENTE MOIRAN AUTH)
 # ---------------------------------------------------------------------
-def mostrar_login():
-    col_left, col_center, col_right = st.columns([0.8, 1.8, 0.8])
-
-    with col_center:
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        svg_logo_login = """
-<div style="text-align: center; margin-bottom: 25px;">
-<svg width="100%" height="100" viewBox="0 0 400 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="45" cy="50" r="38" fill="#00E5FF" fill-opacity="0.06"/>
-<path d="M 22 15 L 22 82 L 78 82" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round"/>
-<path d="M 73 82 L 85 70" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round"/>
-<path d="M 18 78 Q 32 80, 44 28 T 74 68 Q 78 64, 83 55" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round" fill="none"/>
-<path d="M 18 80 Q 32 82, 44 30 T 74 66, 83 57" stroke="#7B2CBF" stroke-width="2" stroke-linecap="round" fill="none" stroke-opacity="0.7"/>
-<circle cx="25" cy="78" r="3.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.5"/>
-<circle cx="44" cy="28" r="3.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.5"/>
-<circle cx="65" cy="60" r="3.5" fill="#FFFFFF" stroke="#00E5FF" stroke-width="1.5"/>
-<circle cx="83" cy="55" r="5.5" fill="#00E5FF" stroke="#FFFFFF" stroke-width="2"/>
-<text x="108" y="50" fill="#FFFFFF" font-family="'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="800" letter-spacing="5">LÁQUESIS</text>
-<text x="110" y="72" fill="#00E5FF" font-family="'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" letter-spacing="2">DEMAND & FORECASTING ENGINE</text>
-<line x1="110" y1="82" x2="370" y2="82" stroke="#2A323D" stroke-width="1.5"/>
-<line x1="110" y1="82" x2="210" y2="82" stroke="#00E5FF" stroke-width="2.5"/>
-</svg>
-</div>
-"""
-        st.markdown(svg_logo_login, unsafe_allow_html=True)
-
-        with st.form("login_form", clear_on_submit=False):
-            usuario_input = st.text_input("👤 Usuario", placeholder="Ingresa tu usuario", key="user_input")
-            password_input = st.text_input("🔒 Contraseña", type="password", placeholder="Ingresa tu contraseña", key="pass_input")
-            
-            btn_login = st.form_submit_button("Iniciar Sesión", use_container_width=True)
-
-            if btn_login:
-                if usuario_input == USUARIO_CORRECTO and password_input == PASSWORD_CORRECTO:
-                    st.session_state["logged_in"] = True
-                    st.session_state["usuario_actual"] = usuario_input
-                    st.session_state["toast_pendiente"] = "✅ Acceso concedido. Bienvenido a Láquesis."
-                    st.rerun()
-                else:
-                    st.error("❌ Usuario o contraseña incorrectos.")
-
-        st.markdown("""
-<div style="text-align: center; margin-top: 30px; color: #475569; font-size: 13px; font-weight: 500;">
-    Motor Láquesis v1.5.0 • Release Producción
-</div>
-""", unsafe_allow_html=True)
+if not auth.requerir_autenticacion():
+    st.stop()
 
 # ---------------------------------------------------------------------
-# FLUJO PRINCIPAL DE LA APLICACIÓN
+# FLUJO PRINCIPAL DE LA APLICACIÓN (AUTENTICADO)
 # ---------------------------------------------------------------------
-if not st.session_state["logged_in"]:
-    mostrar_login()
-else:
-    # DESPLIEGUE DE TOASTS PENDIENTES
-    if "toast_pendiente" in st.session_state and st.session_state["toast_pendiente"]:
-        st.toast(st.session_state["toast_pendiente"])
-        del st.session_state["toast_pendiente"]
+if "toast_pendiente" in st.session_state and st.session_state["toast_pendiente"]:
+    st.toast(st.session_state["toast_pendiente"])
+    del st.session_state["toast_pendiente"]
 
-    # -----------------------------------------------------------------
-    # BARRA LATERAL
-    # -----------------------------------------------------------------
-    svg_sidebar_logo = """
+# -----------------------------------------------------------------
+# BARRA LATERAL
+# -----------------------------------------------------------------
+svg_sidebar_logo = """
 <div style="display: flex; justify-content: center; align-items: center; width: 100%; margin: 0 auto; padding: 5px 0 15px 0;">
 <svg width="220" height="60" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
 <circle cx="28" cy="30" r="22" fill="#00E5FF" fill-opacity="0.08"/>
@@ -379,32 +326,30 @@ else:
 </svg>
 </div>
 """
-    st.sidebar.markdown(svg_sidebar_logo, unsafe_allow_html=True)
+st.sidebar.markdown(svg_sidebar_logo, unsafe_allow_html=True)
 
-    usuario_actual = st.session_state.get('usuario_actual', 'Fvictoria1')
-    st.sidebar.markdown(f"""
+st.sidebar.markdown(f"""
 <div style="background-color: #1A1F26; border: 1px solid #2D3748; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
     <div style="color: #64748B; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px;">PERFIL ACTIVO</div>
-    <div style="color: #F1F5F9; font-size: 13px; font-weight: 600; margin-bottom: 3px;">👤 Usuario: <span style="color: #00E5FF; font-weight: 700;">{usuario_actual}</span></div>
+    <div style="color: #F1F5F9; font-size: 13px; font-weight: 600; margin-bottom: 3px;">👤 Usuario: <span style="color: #00E5FF; font-weight: 700;">{auth.usuario_actual}</span></div>
     <div style="color: #F1F5F9; font-size: 13px; font-weight: 600;">🟢 Estado: <span style="color: #10B981; font-weight: 700;">En Línea</span></div>
 </div>
 """, unsafe_allow_html=True)
-    
-    if st.sidebar.button("🔒 Cerrar Sesión", use_container_width=True):
-        st.session_state["logged_in"] = False
-        limpiar_todo()
 
-    st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
-    
-    # GUÍA PASO A PASO
-    st.sidebar.markdown("""
+if st.sidebar.button("🔒 Cerrar Sesión", use_container_width=True):
+    auth.cerrar_sesion(callback_limpieza=limpiar_todo)
+
+st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
+
+# GUÍA PASO A PASO
+st.sidebar.markdown("""
 <div style="color: #00E5FF; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 15px;">
     🛠️ GUÍA DE OPERACIÓN
 </div>
 """, unsafe_allow_html=True)
 
-    # PASO 1
-    st.sidebar.markdown("""
+# PASO 1
+st.sidebar.markdown("""
 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
     <span style="background: rgba(0, 229, 255, 0.15); color: #00E5FF; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">PASO 1</span>
     <span style="color: #F1F5F9; font-size: 13px; font-weight: 700;">Descargar Plantilla</span>
@@ -414,23 +359,23 @@ else:
 </div>
 """, unsafe_allow_html=True)
 
-    try:
-        with open("Plantilla_Carga_Forecasting.xlsx", "rb") as f:
-            bytes_plantilla = f.read()
-        st.sidebar.download_button(
-            label="📥 Descargar Plantilla Demo",
-            data=bytes_plantilla,
-            file_name="Plantilla_Carga_Forecasting.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    except FileNotFoundError:
-        st.sidebar.warning("⚠️ Plantilla base no encontrada.")
+try:
+    with open("Plantilla_Carga_Forecasting.xlsx", "rb") as f:
+        bytes_plantilla = f.read()
+    st.sidebar.download_button(
+        label="📥 Descargar Plantilla Demo",
+        data=bytes_plantilla,
+        file_name="Plantilla_Carga_Forecasting.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True
+    )
+except FileNotFoundError:
+    st.sidebar.warning("⚠️ Plantilla base no encontrada.")
 
-    st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
+st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
 
-    # PASO 2
-    st.sidebar.markdown("""
+# PASO 2
+st.sidebar.markdown("""
 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
     <span style="background: rgba(0, 229, 255, 0.15); color: #00E5FF; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">PASO 2</span>
     <span style="color: #F1F5F9; font-size: 13px; font-weight: 700;">Cargar Información</span>
@@ -440,39 +385,38 @@ else:
 </div>
 """, unsafe_allow_html=True)
 
-    archivo_subido = st.sidebar.file_uploader(
-        "Sube tu archivo de Excel (.xlsx)", 
-        type=["xlsx"], 
-        label_visibility="collapsed",
-        key=f"file_uploader_{st.session_state['uploader_key']}"
-    )
+archivo_subido = st.sidebar.file_uploader(
+    "Sube tu archivo de Excel (.xlsx)", 
+    type=["xlsx"], 
+    label_visibility="collapsed",
+    key=f"file_uploader_{st.session_state['uploader_key']}"
+)
 
-    titulo_calculo = st.sidebar.text_input(
-        "🏷️ Título del Cálculo",
-        placeholder="Ej. Vallejo15.10.26V1",
-        key="titulo_calculo_input"
-    )
+titulo_calculo = st.sidebar.text_input(
+    "🏷️ Título del Cálculo",
+    placeholder="Ej. Vallejo15.10.26V1",
+    key="titulo_calculo_input"
+)
 
-    ya_procesado = ("df_resultados" in st.session_state) or ("df_resultados_v1_1" in st.session_state)
+ya_procesado = ("df_resultados" in st.session_state) or ("df_resultados_v1_1" in st.session_state)
 
-    if ya_procesado:
-        titulo_valido = bool(titulo_calculo and titulo_calculo.strip())
-        if st.sidebar.button("💾 Guardar / Actualizar en Drive", use_container_width=True, disabled=not titulo_valido):
-            df_curr = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
-            if df_curr is not None:
-                usuario_act = st.session_state.get('usuario_actual', 'Fvictoria1')
-                titulo_act = titulo_calculo.strip()
-                exito, msg = drive_utils.guardar_historial_drive(df_curr, usuario_act, titulo_act)
-                if exito:
-                    st.session_state["toast_pendiente"] = f"☁️ Pronóstico '🏷️ {titulo_act}' respaldado en Drive"
-                else:
-                    st.session_state["toast_pendiente"] = f"❌ {msg}"
-                st.rerun()
+if ya_procesado:
+    titulo_valido = bool(titulo_calculo and titulo_calculo.strip())
+    if st.sidebar.button("💾 Guardar / Actualizar en Drive", use_container_width=True, disabled=not titulo_valido):
+        df_curr = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
+        if df_curr is not None:
+            titulo_act = titulo_calculo.strip()
+            exito, msg = drive_utils.guardar_historial_drive(df_curr, auth.usuario_actual, titulo_act)
+            if exito:
+                st.session_state["toast_pendiente"] = f"☁️ Pronóstico '🏷️ {titulo_act}' respaldado en Drive"
+            else:
+                st.session_state["toast_pendiente"] = f"❌ {msg}"
+            st.rerun()
 
-    st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
+st.sidebar.markdown("<hr style='border: 0; height: 1px; background: #232A34; margin: 15px 0;'>", unsafe_allow_html=True)
 
-    # PASO 3
-    st.sidebar.markdown("""
+# PASO 3
+st.sidebar.markdown("""
 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
     <span style="background: rgba(0, 229, 255, 0.15); color: #00E5FF; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800;">PASO 3</span>
     <span style="color: #F1F5F9; font-size: 13px; font-weight: 700;">Analizar Resultados</span>
@@ -482,14 +426,14 @@ else:
 </div>
 """, unsafe_allow_html=True)
 
-    # -----------------------------------------------------------------
-    # WORKSPACE PRINCIPAL
-    # -----------------------------------------------------------------
-    if archivo_subido is None and not ya_procesado:
-        col_main, col_historial = st.columns([2.3, 1.7], gap="medium")
+# -----------------------------------------------------------------
+# WORKSPACE PRINCIPAL
+# -----------------------------------------------------------------
+if archivo_subido is None and not ya_procesado:
+    col_main, col_historial = st.columns([2.3, 1.7], gap="medium")
 
-        with col_main:
-            welcome_html = """
+    with col_main:
+        welcome_html = """
 <div class="welcome-card">
 <h1 style="color: #FFFFFF; font-size: 34px; font-weight: 800; margin-bottom: 10px;">Bienvenido a Láquesis</h1>
 <p style="color: #00E5FF; font-size: 17px; font-weight: 600; margin-bottom: 25px;">
@@ -508,65 +452,65 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
 </div>
 </div>
 """
-            st.markdown(welcome_html, unsafe_allow_html=True)
+        st.markdown(welcome_html, unsafe_allow_html=True)
 
-        with col_historial:
-            with st.container(border=True):
-                st.subheader("☁️ Historial en Drive (Últimos 5)")
-                archivos_drive = drive_utils.listar_historial_drive()
-                render_historial_listado(archivos_drive, key_prefix="welcome")
+    with col_historial:
+        with st.container(border=True):
+            st.subheader("☁️ Historial en Drive (Últimos 5)")
+            archivos_drive = drive_utils.listar_historial_drive()
+            render_historial_listado(archivos_drive, key_prefix="welcome")
 
-    else:
-        if archivo_subido is not None and not ya_procesado:
-            try:
-                df_input = pd.read_excel(archivo_subido, sheet_name="Carga_Datos")
-            except Exception:
-                df_input = pd.read_excel(archivo_subido)
-                
-            df_input["SKU_norm"] = df_input["SKU"].apply(normalizar_sku)
-            st.success(f"✅ Archivo cargado correctamente: **{len(df_input)} SKUs** detectados.")
+else:
+    if archivo_subido is not None and not ya_procesado:
+        try:
+            df_input = pd.read_excel(archivo_subido, sheet_name="Carga_Datos")
+        except Exception:
+            df_input = pd.read_excel(archivo_subido)
+            
+        df_input["SKU_norm"] = df_input["SKU"].apply(normalizar_sku)
+        st.success(f"✅ Archivo cargado correctamente: **{len(df_input)} SKUs** detectados.")
 
-            # -----------------------------------------------------------------
-            # PANEL DE SWITCHES DE REGLAS DE NEGOCIO (PREVIO AL CÁLCULO)
-            # -----------------------------------------------------------------
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader("🎛️ Configuración de Reglas de Negocio para el Cálculo")
-            st.markdown("Selecciona mediante los *switch buttons* qué reglas deseas aplicar en esta corrida (todas están activas por defecto):")
+        # -----------------------------------------------------------------
+        # PANEL DE SWITCHES DE REGLAS DE NEGOCIO (PREVIO AL CÁLCULO)
+        # -----------------------------------------------------------------
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.subheader("🎛️ Configuración de Reglas de Negocio para el Cálculo")
+        st.markdown("Selecciona mediante los *switch buttons* qué reglas deseas aplicar en esta corrida (todas están activas por defecto):")
 
-            col_sw1, col_sw2 = st.columns(2, gap="medium")
+        col_sw1, col_sw2 = st.columns(2, gap="medium")
 
-            with col_sw1:
-                toggle_cero = st.toggle(
-                    "🛡️ **Regla 1: Pronóstico Cero Absoluto**",
-                    value=True,
-                    key="toggle_regla_cero",
-                    help="En demanda nula ($M37=0$), retiene los parámetros del ERP o asigna piso inicial según prioridad."
-                )
-                toggle_piso = st.toggle(
-                    "🏔️ **Regla 2: Piso por Evento Máximo**",
-                    value=True,
-                    key="toggle_piso_evento",
-                    help="Garantiza que el PDR cubra al menos la compra máxima histórica registrada para SKUs prioritarios."
-                )
+        with col_sw1:
+            toggle_cero = st.toggle(
+                "🛡️ **Regla 1: Pronóstico Cero Absoluto**",
+                value=True,
+                key="toggle_regla_cero",
+                help="En demanda nula ($M37=0$), retiene los parámetros del ERP o asigna piso inicial según prioridad."
+            )
+            toggle_piso = st.toggle(
+                "🏔️ **Regla 2: Piso por Evento Máximo**",
+                value=True,
+                key="toggle_piso_evento",
+                help="Garantiza que el PDR cubra al menos la compra máxima histórica registrada para SKUs prioritarios."
+            )
 
-            with col_sw2:
-                toggle_techo = st.toggle(
-                    "🧢 **Regla 3: Techo Supremo de Cobertura (90 Días)**",
-                    value=True,
-                    key="toggle_techo_cobertura",
-                    help="Restringe el Stock Máximo para no superar 90 días de cobertura basada en la venta real histórica."
-                )
-                toggle_candado = st.toggle(
-                    "🚨 **Regla 4: Candado de Auditoría Dinámico**",
-                    value=True,
-                    key="toggle_candado_auditoria",
-                    help="Activa 'A REVISIÓN' y congela parámetros ERP ante colapsos drásticos o inventario fantasma sin venta."
-                )
+        with col_sw2:
+            toggle_techo = st.toggle(
+                "🧢 **Regla 3: Techo Supremo de Cobertura (90 Días)**",
+                value=True,
+                key="toggle_techo_cobertura",
+                help="Restringe el Stock Máximo para no superar 90 días de cobertura basada en la venta real histórica."
+            )
+            toggle_candado = st.toggle(
+                "🚨 **Regla 4: Candado de Auditoría Dinámico**",
+                value=True,
+                key="toggle_candado_auditoria",
+                help="Activa 'A REVISIÓN' y congela parámetros ERP ante colapsos drásticos o inventario fantasma sin venta."
+            )
 
-            st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        if st.session_state["confirmar_limpieza"]:
-            st.markdown("""
+    if st.session_state["confirmar_limpieza"]:
+        st.markdown("""
 <div style="background-color: #1E1B24; border: 1px solid #FF3366; border-radius: 12px; padding: 20px 25px; margin-bottom: 25px; box-shadow: 0 6px 20px rgba(255, 51, 102, 0.2);">
     <div style="color: #FF3366; font-size: 18px; font-weight: 800; margin-bottom: 6px;">
         ⚠️ Advertencia de Limpieza de Interfaz
@@ -576,301 +520,262 @@ Sigue la guía de 3 pasos en el panel lateral para cargar tu archivo de Excel o 
     </div>
 </div>
 """, unsafe_allow_html=True)
-            col_warn1, col_warn2, col_pad = st.columns([1, 1, 1.5])
-            with col_warn1:
-                if st.button("✅ Sí, limpiar todo", use_container_width=True):
-                    limpiar_todo()
-            with col_warn2:
-                if st.button("❌ Cancelar", use_container_width=True):
-                    st.session_state["confirmar_limpieza"] = False
-                    st.rerun()
-
-        if ya_procesado:
-            btn_limpiar_main = st.button("🧹 Limpiar Interfaz", use_container_width=True)
-            btn_limpiar_side = st.sidebar.button("🧹 Limpiar Interfaz (Paso 3)", use_container_width=True)
-            
-            if (btn_limpiar_main or btn_limpiar_side) and not st.session_state["confirmar_limpieza"]:
-                st.session_state["confirmar_limpieza"] = True
-                st.rerun()
-        else:
-            btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
-            btn_procesar_main = st.button("🚀 PROCESAR PRONÓSTICOS E INVENTARIOS", use_container_width=True)
-            
-            if btn_procesar_main or btn_procesar_side:
-                resultados_totales = []
-                detalle_competencia_dict = {}
-                total_skus = len(df_input)
-                
-                # OBTENCIÓN DE VALORES DE REGLAS DE SESIÓN
-                sw_cero = st.session_state.get("toggle_regla_cero", True)
-                sw_piso = st.session_state.get("toggle_piso_evento", True)
-                sw_techo = st.session_state.get("toggle_techo_cobertura", True)
-                sw_candado = st.session_state.get("toggle_candado_auditoria", True)
-
-                cols_historico = [col for col in df_input.columns if col.startswith("M") and col[1:].isdigit()]
-                
-                # USO DE ST.STATUS (CONTENEDOR SEGURO ANTI-JS ERROR)
-                with st.status("⚡ Procesando pronósticos e inventarios multimodelo...", expanded=True) as status:
-                    for idx, row in df_input.iterrows():
-                        try:
-                            sku_normalizado = row["SKU_norm"]
-                            status.update(label=f"⚡ Procesando SKU {idx + 1} de {total_skus} ({sku_normalizado})...")
-                            desc = str(row.get("Descripcion", "")) if pd.notna(row.get("Descripcion")) else ""
-                            
-                            series_raw = row[cols_historico].values
-                            series_val = np.array([safe_float(x, 0.0) for x in series_raw], dtype=float)
-                            
-                            dias_bloque = safe_float(row.get("Dias_Operativos_Bloque"), 30.0)
-                            te_dias = safe_float(row.get("Tiempo_Entrega_Dias"), 5.0)
-                            z_val = safe_float(row.get("Nivel_Servicio_Deseado"), 1.65)
-                            
-                            inv_act = safe_float(row.get("Inventario_Actual"), None)
-                            stk_max_act = safe_float(row.get("Stock_Maximo_Actual"), None)
-                            pdr_act = safe_float(row.get("PDR_Actual"), None)
-                            costo_u = safe_float(row.get("Costo_Unitario"), None)
-                            tasa_m = safe_float(row.get("Tasa_Mantenimiento_Anual"), None)
-                            costo_o = safe_float(row.get("Costo_Ordenar"), None)
-                            mult_e = safe_float(row.get("Multiplo_Empaque"), None)
-                            evt_max = safe_float(row.get("Evento_Maximo"), None)
-                            
-                            res_forecast = engine.seleccionar_mejor_metodo(series_val)
-                            p_m37 = safe_float(res_forecast.get("Pronostico_M37"), 0.0)
-                            metodo = res_forecast.get("Metodo_Ganador", "Promedio Simple")
-                            puntaje = safe_float(res_forecast.get("Puntaje_Total"), 0.0)
-                            
-                            # NORMALIZACIÓN Y AUDITORÍA DE MATRIZ DE COMPETENCIA MULTIMODELO
-                            if "Tabla_Competencia" in res_forecast and res_forecast["Tabla_Competencia"]:
-                                df_comp_sku = pd.DataFrame(res_forecast["Tabla_Competencia"])
-                            elif "Detalle_Modelos" in res_forecast and res_forecast["Detalle_Modelos"]:
-                                df_comp_sku = pd.DataFrame(res_forecast["Detalle_Modelos"])
-                            else:
-                                metodo_norm = normalizar_texto(metodo)
-                                comp_data = [
-                                    {"Modelo": "Promedio Móvil (4)", "MAE": round(np.std(series_val)*0.9, 2), "BIAS": 0.5, "Puntaje_MAE": 4.5, "Puntaje_BIAS": 4.5, "Puntaje_Total": round(puntaje if "movil" in metodo_norm else 7.2, 2), "Pronostico_M37": round(p_m37, 2), "Estatus": "🏆 GANADOR" if "movil" in metodo_norm else "Finalista"},
-                                    {"Modelo": "Promedio Simple", "MAE": round(np.std(series_val)*0.8, 2), "BIAS": -1.2, "Puntaje_MAE": 4.8, "Puntaje_BIAS": 4.0, "Puntaje_Total": round(puntaje if "simple" in metodo_norm else 6.8, 2), "Pronostico_M37": round(p_m37*0.98, 2), "Estatus": "🏆 GANADOR" if "simple" in metodo_norm else "Finalista"},
-                                    {"Modelo": "TSB (Teunter-Syntetos-Babai)", "MAE": round(np.std(series_val)*1.0, 2), "BIAS": 1.1, "Puntaje_MAE": 4.2, "Puntaje_BIAS": 4.0, "Puntaje_Total": round(puntaje if "tsb" in metodo_norm else 6.5, 2), "Pronostico_M37": round(p_m37*1.02, 2), "Estatus": "🏆 GANADOR" if "tsb" in metodo_norm else "Finalista"},
-                                    {"Modelo": "Croston-SBA", "MAE": round(np.std(series_val)*1.3, 2), "BIAS": -2.1, "Puntaje_MAE": 3.5, "Puntaje_BIAS": 3.5, "Puntaje_Total": round(puntaje if "croston" in metodo_norm else 6.0, 2), "Pronostico_M37": round(p_m37*0.95, 2), "Estatus": "🏆 GANADOR" if "croston" in metodo_norm else "Finalista"},
-                                    {"Modelo": "Suavización Exponencial (SES)", "MAE": round(np.std(series_val)*1.4, 2), "BIAS": -4.2, "Puntaje_MAE": 3.0, "Puntaje_BIAS": 2.8, "Puntaje_Total": 5.8, "Pronostico_M37": round(p_m37*0.91, 2), "Estatus": "Eliminado"}
-                                ]
-                                df_comp_sku = pd.DataFrame(comp_data)
-                            
-                            # Asegurar ordenamiento descendente por Puntaje_Total en la auditoría visual
-                            if "Puntaje_Total" in df_comp_sku.columns:
-                                df_comp_sku = df_comp_sku.sort_values(by="Puntaje_Total", ascending=False).reset_index(drop=True)
-
-                            detalle_competencia_dict[sku_normalizado] = df_comp_sku
-
-                            std_diaria = float(np.std(series_val) / dias_bloque) if dias_bloque > 0 else 0.0
-                            
-                            res_inv = inventory.calcular_metricas_inventario(
-                                pronostico_m37=p_m37,
-                                dias_operativos_bloque=dias_bloque,
-                                tiempo_entrega_dias=te_dias,
-                                nivel_servicio_z=z_val,
-                                std_diaria_historica=std_diaria,
-                                series_historica=series_val,
-                                inventario_actual=inv_act,
-                                stock_maximo_actual=stk_max_act,
-                                pdr_actual=pdr_act,
-                                costo_unitario=costo_u,
-                                tasa_mantenimiento_anual=tasa_m,
-                                costo_ordenar=costo_o,
-                                multiplo_empaque=mult_e,
-                                evento_maximo=evt_max,
-                                regla_pronostico_cero=sw_cero,
-                                regla_piso_evento=sw_piso,
-                                regla_techo_cobertura=sw_techo,
-                                regla_candado_auditoria=sw_candado
-                            )
-                            
-                            label_cobertura = f"⚠️ Topado ({res_inv['Dias_Max_Cobertura']}d)" if res_inv.get("Cap_Cobertura_Aplicado", False) else "OK"
-
-                            fila_res = {
-                                "SKU": sku_normalizado,
-                                "Descripcion": desc,
-                                "Categoria": res_inv["Categoria_Demanda"],
-                                "Lote_Venta_Z": res_inv["Lote_Promedio_Z"],
-                                "Metodo_Ganador": metodo,
-                                "Puntaje_Modelo": round(puntaje, 2),
-                                "Pronostico_M37": round(p_m37, 2),
-                                "Demanda_Diaria_DDP": round(safe_float(res_inv.get("DDP"), 0.0), 2),
-                                "Stock_Max_Actual": stk_max_act if stk_max_act is not None else "N/D",
-                                "PDR_Actual": pdr_act if pdr_act is not None else "N/D",
-                                "Stock_Seguridad_SS": res_inv["SS"],
-                                "Punto_Reorden_PDR": res_inv["PDR"],
-                                "Ajuste_Piso_Evento": "🛡️ SÍ (Ajustado)" if res_inv.get("Piso_Evento_Aplicado", False) else "NO",
-                                "Cobertura_Max_Ajustada": label_cobertura,
-                                "Stock_Maximo": res_inv["Stock_Maximo"],
-                                "Estatus_Auditoria": res_inv.get("Estatus_Auditoria", "OK"),
-                                "Lote_Economico_Q": res_inv["EOQ_Q"] if res_inv["EOQ_Q"] is not None else "None",
-                                "Reabasto_Sugerido": res_inv["Reabasto_Sugerido"] if res_inv["Reabasto_Sugerido"] is not None else "None"
-                            }
-                            resultados_totales.append(fila_res)
-                        except Exception as err_row:
-                            print(f"Error procesando SKU {row.get('SKU')}: {err_row}")
-                    
-                    status.update(label="✅ ¡Procesamiento completado con éxito!", state="complete", expanded=False)
-
-                df_resultados = pd.DataFrame(resultados_totales)
-                st.session_state["df_resultados"] = df_resultados
-                st.session_state["df_input"] = df_input
-                st.session_state["detalle_competencia"] = detalle_competencia_dict
-                
-                # GUARDADO AUTOMÁTICO EN GOOGLE DRIVE
-                usuario_act = st.session_state.get('usuario_actual', 'Fvictoria1')
-                titulo_act = titulo_calculo.strip() if titulo_calculo else ""
-                exito, msg = drive_utils.guardar_historial_drive(df_resultados, usuario_act, titulo_act)
-                
-                st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento completado con reglas configuradas!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
+        col_warn1, col_warn2, col_pad = st.columns([1, 1, 1.5])
+        with col_warn1:
+            if st.button("✅ Sí, limpiar todo", use_container_width=True):
+                limpiar_todo()
+        with col_warn2:
+            if st.button("❌ Cancelar", use_container_width=True):
+                st.session_state["confirmar_limpieza"] = False
                 st.rerun()
 
-        # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
-        df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
+    if ya_procesado:
+        btn_limpiar_main = st.button("🧹 Limpiar Interfaz", use_container_width=True)
+        btn_limpiar_side = st.sidebar.button("🧹 Limpiar Interfaz (Paso 3)", use_container_width=True)
         
-        if df_res is not None:
-            with st.expander("☁️ Administrar Historial de Pronósticos Guardados en Google Drive"):
-                archivos_drive = drive_utils.listar_historial_drive()
-                render_historial_listado(archivos_drive, key_prefix="exp")
+        if (btn_limpiar_main or btn_limpiar_side) and not st.session_state["confirmar_limpieza"]:
+            st.session_state["confirmar_limpieza"] = True
+            st.rerun()
+    else:
+        btn_procesar_side = st.sidebar.button("🚀 Procesar Datos (Paso 3)", use_container_width=True)
+        btn_procesar_main = st.button("🚀 PROCESAR PRONÓSTICOS E INVENTARIOS", use_container_width=True)
+        
+        if btn_procesar_main or btn_procesar_side:
+            resultados_totales = []
+            detalle_competencia_dict = {}
+            total_skus = len(df_input)
+            
+            # OBTENCIÓN DE VALORES DE REGLAS DE SESIÓN
+            sw_cero = st.session_state.get("toggle_regla_cero", True)
+            sw_piso = st.session_state.get("toggle_piso_evento", True)
+            sw_techo = st.session_state.get("toggle_techo_cobertura", True)
+            sw_candado = st.session_state.get("toggle_candado_auditoria", True)
 
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # 1. TABLA GENERAL
-            st.subheader("📋 Resumen General de Resultados")
-            st.dataframe(df_res, use_container_width=True)
+            cols_historico = [col for col in df_input.columns if col.startswith("M") and col[1:].isdigit()]
             
-            st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
-            
-            # 2. TABLA INTERMEDIA DE COMPETENCIA
-            st.subheader("⚔️ Matriz de Competencia Multimodelo por SKU (Validación BIAS & MAE)")
-            st.markdown("Selecciona un SKU para auditar el desempeño de los 10 modelos evaluados:")
-            
-            sku_lista = [normalizar_sku(s) for s in df_res["SKU"].unique()]
-            sku_seleccionado = st.selectbox("SKU para Auditoría Múltiple:", sku_lista, key="sku_audit_select")
-            
-            dict_comp = st.session_state.get("detalle_competencia", st.session_state.get("detalle_competencia_v1_1", {}))
-            if sku_seleccionado in dict_comp:
-                df_comp = dict_comp[sku_seleccionado]
-                st.dataframe(df_comp, use_container_width=True)
-            else:
-                st.info("ℹ️ Clic en Procesar Datos para generar el torneo de modelos.")
-                
-            st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
-            
-            # 3. INSPECCIÓN INDIVIDUAL Y GRÁFICO
-            st.subheader("📈 Inspección Individual por SKU")
-            
-            df_inp_state = st.session_state.get("df_input", st.session_state.get("df_input_v1_1", None))
-            
-            filtro_res = df_res[df_res["SKU"] == sku_seleccionado]
-            filtro_inp = df_inp_state[df_inp_state["SKU_norm"] == sku_seleccionado] if df_inp_state is not None else pd.DataFrame()
-            
-            if not filtro_res.empty:
-                row_res = filtro_res.iloc[0]
-                
-                col1, col2, col3, col4, col5 = st.columns(5)
-                with col1:
-                    render_kpi_card("Categoría", row_res["Categoria"])
-                with col2:
-                    render_kpi_card("Método Ganador", row_res["Metodo_Ganador"])
-                with col3:
-                    render_kpi_card("Pronóstico M37", f"{row_res['Pronostico_M37']} uds")
-                with col4:
-                    label_pdr = f"{row_res['Punto_Reorden_PDR']} uds"
-                    if row_res.get("Ajuste_Piso_Evento") == "🛡️ SÍ (Ajustado)":
-                        label_pdr += " (🛡️)"
-                    render_kpi_card("Punto Reorden (PDR)", label_pdr)
-                with col5:
-                    render_kpi_card("Stock Máximo", f"{row_res['Stock_Maximo']} uds")
-                
-                st.markdown("<br>", unsafe_allow_html=True)
-                
-                # Banner informativo si se activó el Candado de Auditoría
-                estatus_aud = str(row_res.get("Estatus_Auditoria", "OK"))
-                if "A REVISIÓN" in estatus_aud:
-                    st.error(f"🚨 **Candado de Auditoría Activado ({estatus_aud}):** La propuesta del modelo representa una reducción extrema sobre el Stock Máximo configurado en el ERP ({row_res.get('Stock_Max_Actual', 'N/D')} uds). Se requiere validación física en almacén.")
-                
-                # Banner informativo si aplicó la regla de piso
-                if row_res.get("Ajuste_Piso_Evento") == "🛡️ SÍ (Ajustado)":
-                    st.info("🛡️ **Piso de Protección Activado:** El Punto de Reorden ($PDR$) de este SKU fue ajustado hacia arriba para ser al menos igual al **Evento Máximo** registrado, garantizando cobertura ante picos de demanda.")
-                
-                # Banner informativo si aplicó la regla de techo de cobertura
-                if "⚠️ Topado" in str(row_res.get("Cobertura_Max_Ajustada", "")):
-                    st.warning(f"⚠️ **Techo Supremo de Cobertura Activado:** El Stock Máximo de este SKU fue ajustado para no rebasar la política corporativa de días de inventario ({row_res['Cobertura_Max_Ajustada']}), conservando la brecha de reabasto.")
-
-                if not filtro_inp.empty:
-                    row_inp = filtro_inp.iloc[0]
-                    cols_m = [c for c in df_inp_state.columns if c.startswith("M") and c[1:].isdigit()]
-                    serie_hist = np.array([safe_float(val, 0.0) for val in row_inp[cols_m].values], dtype=float)
-                    
-                    x_hist = np.arange(1, 37)
-                    media_train = np.mean(serie_hist[:24])
-                    np.random.seed(42)
-                    backtest_m25_m36 = media_train + (serie_hist[24:36] - media_train) * 0.45
-                    
-                    x_backtest = np.arange(25, 37)
-                    x_m37 = 37
-                    val_m37 = float(row_res['Pronostico_M37'])
-                    
-                    x_pronostico_full = np.append(x_backtest, x_m37)
-                    y_pronostico_full = np.append(backtest_m25_m36, val_m37)
-                    
-                    fig, ax = plt.subplots(figsize=(10, 4.5))
-                    fig.patch.set_facecolor("#121519")
-                    ax.set_facecolor("#1A1F26")
-                    
-                    # Escala dinámica del eje Y para espacio suficiente superior
-                    max_val_plot = max(np.max(serie_hist), np.max(y_pronostico_full))
-                    ax.set_ylim(-1.0, max_val_plot * 1.25 + 1.5)
-                    
-                    ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.06, label="Ventana Evaluación (M25-M36)")
-                    ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", markersize=5.5, color="#00E5FF", linewidth=2.0, zorder=3)
-                    ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
-                            marker="s", markersize=5.5, linestyle="--", color="#FF2A6D", linewidth=2.0, zorder=4)
-                    ax.scatter(x_m37, val_m37, color="#FF2A6D", s=110, edgecolor="#FFFFFF", linewidth=2, zorder=5)
-                    
-                    # 1. ETIQUETAS PARA VENTAS HISTÓRICAS (SOLO PUNTOS > 0 PARA EVITAR SOBRECARGA DE CEROS)
-                    for x, y in zip(x_hist, serie_hist):
-                        if y > 0:
-                            lbl = f"{int(y)}" if y == int(y) else f"{y:.1f}"
-                            ax.annotate(
-                                lbl, (x, y), textcoords="offset points", xytext=(0, 7),
-                                ha='center', va='bottom', color="#00E5FF", fontsize=8.5, fontweight='bold',
-                                bbox=dict(boxstyle="round,pad=0.15", facecolor="#121519", edgecolor="none", alpha=0.7)
-                            )
-                    
-                    # 2. ETIQUETAS PARA PRONÓSTICO (BACKTEST M25-M36 Y M37)
-                    for x, y in zip(x_pronostico_full, y_pronostico_full):
-                        if x == 37:
-                            # Badge distintivo para M37
-                            ax.annotate(
-                                f"M37: {round(y, 2)}", (x, y), textcoords="offset points", xytext=(0, -20),
-                                ha='center', va='top', color="#FF2A6D", fontsize=9, fontweight='bold',
-                                bbox=dict(boxstyle="round,pad=0.25", facecolor="#161A20", edgecolor="#FF2A6D", alpha=0.9)
-                            )
+            with st.status("⚡ Procesando pronósticos e inventarios multimodelo...", expanded=True) as status:
+                for idx, row in df_input.iterrows():
+                    try:
+                        sku_normalizado = row["SKU_norm"]
+                        status.update(label=f"⚡ Procesando SKU {idx + 1} de {total_skus} ({sku_normalizado})...")
+                        desc = str(row.get("Descripcion", "")) if pd.notna(row.get("Descripcion")) else ""
+                        
+                        series_raw = row[cols_historico].values
+                        series_val = np.array([safe_float(x, 0.0) for x in series_raw], dtype=float)
+                        
+                        dias_bloque = safe_float(row.get("Dias_Operativos_Bloque"), 30.0)
+                        te_dias = safe_float(row.get("Tiempo_Entrega_Dias"), 5.0)
+                        z_val = safe_float(row.get("Nivel_Servicio_Deseado"), 1.65)
+                        
+                        inv_act = safe_float(row.get("Inventario_Actual"), None)
+                        stk_max_act = safe_float(row.get("Stock_Maximo_Actual"), None)
+                        pdr_act = safe_float(row.get("PDR_Actual"), None)
+                        costo_u = safe_float(row.get("Costo_Unitario"), None)
+                        tasa_m = safe_float(row.get("Tasa_Mantenimiento_Anual"), None)
+                        costo_o = safe_float(row.get("Costo_Ordenar"), None)
+                        mult_e = safe_float(row.get("Multiplo_Empaque"), None)
+                        evt_max = safe_float(row.get("Evento_Maximo"), None)
+                        
+                        res_forecast = engine.seleccionar_mejor_metodo(series_val)
+                        p_m37 = safe_float(res_forecast.get("Pronostico_M37"), 0.0)
+                        metodo = res_forecast.get("Metodo_Ganador", "Promedio Simple")
+                        puntaje = safe_float(res_forecast.get("Puntaje_Total"), 0.0)
+                        
+                        # Normalización de tabla de competencia de modelos
+                        if "Tabla_Competencia" in res_forecast and res_forecast["Tabla_Competencia"]:
+                            df_comp_sku = pd.DataFrame(res_forecast["Tabla_Competencia"])
+                        elif "Detalle_Modelos" in res_forecast and res_forecast["Detalle_Modelos"]:
+                            df_comp_sku = pd.DataFrame(res_forecast["Detalle_Modelos"])
                         else:
-                            real_val = serie_hist[x-1] if x <= 36 else 0
-                            if y >= real_val:
-                                offset_y = 8
-                                va_align = 'bottom'
-                            else:
-                                offset_y = -12
-                                va_align = 'top'
-                                
-                            ax.annotate(
-                                f"{round(y, 1)}", (x, y), textcoords="offset points", xytext=(0, offset_y),
-                                ha='center', va=va_align, color="#FF2A6D", fontsize=8, fontweight='bold'
-                            )
-                    
-                    ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=11.5, fontweight='bold', pad=12)
-                    ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8", fontsize=9.5)
-                    ax.set_ylabel("Unidades Demanda", color="#94A3B8", fontsize=9.5)
-                    ax.set_xticks(np.arange(0, 39, 3))
-                    ax.tick_params(colors="#94A3B8", labelsize=9)
-                    ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left", fontsize=8.5)
-                    ax.grid(True, linestyle=":", alpha=0.25, color="#2D3748")
-                    
-                    st.pyplot(fig)
-                else:
-                    st.info("ℹ️ Estás visualizando un resultado histórico desde Google Drive. Carga el Excel original si deseas visualizar el gráfico de la serie de tiempo.")
+                            metodo_norm = normalizar_texto(metodo)
+                            comp_data = [
+                                {"Modelo": "Promedio Móvil (4)", "MAE": round(np.std(series_val)*0.9, 2), "BIAS": 0.5, "Puntaje_MAE": 4.5, "Puntaje_BIAS": 4.5, "Puntaje_Total": round(puntaje if "movil" in metodo_norm else 7.2, 2), "Pronostico_M37": round(p_m37, 2), "Estatus": "🏆 GANADOR" if "movil" in metodo_norm else "Finalista"},
+                                {"Modelo": "Promedio Simple", "MAE": round(np.std(series_val)*0.8, 2), "BIAS": -1.2, "Puntaje_MAE": 4.8, "Puntaje_BIAS": 4.0, "Puntaje_Total": round(puntaje if "simple" in metodo_norm else 6.8, 2), "Pronostico_M37": round(p_m37*0.98, 2), "Estatus": "🏆 GANADOR" if "simple" in metodo_norm else "Finalista"},
+                                {"Modelo": "TSB (Teunter-Syntetos-Babai)", "MAE": round(np.std(series_val)*1.0, 2), "BIAS": 1.1, "Puntaje_MAE": 4.2, "Puntaje_BIAS": 4.0, "Puntaje_Total": round(puntaje if "tsb" in metodo_norm else 6.5, 2), "Pronostico_M37": round(p_m37*1.02, 2), "Estatus": "🏆 GANADOR" if "tsb" in metodo_norm else "Finalista"},
+                                {"Modelo": "Croston-SBA", "MAE": round(np.std(series_val)*1.3, 2), "BIAS": -2.1, "Puntaje_MAE": 3.5, "Puntaje_BIAS": 3.5, "Puntaje_Total": round(puntaje if "croston" in metodo_norm else 6.0, 2), "Pronostico_M37": round(p_m37*0.95, 2), "Estatus": "🏆 GANADOR" if "croston" in metodo_norm else "Finalista"},
+                                {"Modelo": "Suavización Exponencial (SES)", "MAE": round(np.std(series_val)*1.4, 2), "BIAS": -4.2, "Puntaje_MAE": 3.0, "Puntaje_BIAS": 2.8, "Puntaje_Total": 5.8, "Pronostico_M37": round(p_m37*0.91, 2), "Estatus": "Eliminado"}
+                            ]
+                            df_comp_sku = pd.DataFrame(comp_data)
+                        
+                        # Asegurar ordenamiento descendente por Puntaje_Total en la vista de auditoría
+                        if "Puntaje_Total" in df_comp_sku.columns:
+                            df_comp_sku = df_comp_sku.sort_values(by="Puntaje_Total", ascending=False).reset_index(drop=True)
+
+                        detalle_competencia_dict[sku_normalizado] = df_comp_sku
+
+                        std_diaria = float(np.std(series_val) / dias_bloque) if dias_bloque > 0 else 0.0
+                        
+                        res_inv = inventory.calcular_metricas_inventario(
+                            pronostico_m37=p_m37,
+                            dias_operativos_bloque=dias_bloque,
+                            tiempo_entrega_dias=te_dias,
+                            nivel_servicio_z=z_val,
+                            std_diaria_historica=std_diaria,
+                            series_historica=series_val,
+                            inventario_actual=inv_act,
+                            stock_maximo_actual=stk_max_act,
+                            pdr_actual=pdr_act,
+                            costo_unitario=costo_u,
+                            tasa_mantenimiento_anual=tasa_m,
+                            costo_ordenar=costo_o,
+                            multiplo_empaque=mult_e,
+                            evento_maximo=evt_max,
+                            regla_pronostico_cero=sw_cero,
+                            regla_piso_evento=sw_piso,
+                            regla_techo_cobertura=sw_techo,
+                            regla_candado_auditoria=sw_candado
+                        )
+                        
+                        label_cobertura = f"⚠️ Topado ({res_inv['Dias_Max_Cobertura']}d)" if res_inv.get("Cap_Cobertura_Aplicado", False) else "OK"
+
+                        fila_res = {
+                            "SKU": sku_normalizado,
+                            "Descripcion": desc,
+                            "Categoria": res_inv["Categoria_Demanda"],
+                            "Lote_Venta_Z": res_inv["Lote_Promedio_Z"],
+                            "Metodo_Ganador": metodo,
+                            "Puntaje_Modelo": round(puntaje, 2),
+                            "Pronostico_M37": round(p_m37, 2),
+                            "Demanda_Diaria_DDP": round(safe_float(res_inv.get("DDP"), 0.0), 2),
+                            "Stock_Max_Actual": stk_max_act if stk_max_act is not None else "N/D",
+                            "PDR_Actual": pdr_act if pdr_act is not None else "N/D",
+                            "Stock_Seguridad_SS": res_inv["SS"],
+                            "Punto_Reorden_PDR": res_inv["PDR"],
+                            "Ajuste_Piso_Evento": "🛡️ SÍ (Ajustado)" if res_inv.get("Piso_Evento_Aplicado", False) else "NO",
+                            "Cobertura_Max_Ajustada": label_cobertura,
+                            "Stock_Maximo": res_inv["Stock_Maximo"],
+                            "Estatus_Auditoria": res_inv.get("Estatus_Auditoria", "OK"),
+                            "Lote_Economico_Q": res_inv["EOQ_Q"] if res_inv["EOQ_Q"] is not None else "None",
+                            "Reabasto_Sugerido": res_inv["Reabasto_Sugerido"] if res_inv["Reabasto_Sugerido"] is not None else "None"
+                        }
+                        resultados_totales.append(fila_res)
+                    except Exception as err_row:
+                        print(f"Error procesando SKU {row.get('SKU')}: {err_row}")
+                
+                status.update(label="✅ ¡Procesamiento completado con éxito!", state="complete", expanded=False)
+
+            df_resultados = pd.DataFrame(resultados_totales)
+            st.session_state["df_resultados"] = df_resultados
+            st.session_state["df_input"] = df_input
+            st.session_state["detalle_competencia"] = detalle_competencia_dict
+            
+            # GUARDADO AUTOMÁTICO EN GOOGLE DRIVE
+            titulo_act = titulo_calculo.strip() if titulo_calculo else ""
+            exito, msg = drive_utils.guardar_historial_drive(df_resultados, auth.usuario_actual, titulo_act)
+            
+            st.session_state["toast_pendiente"] = f"🎉 ¡Procesamiento completado con reglas configuradas!" if exito else f"⚠️ Procesado con alerta de Drive: {msg}"
+            st.rerun()
+
+    # OBTENCIÓN ROBUSTA DE RESULTADOS DE SESIÓN
+    df_res = st.session_state.get("df_resultados", st.session_state.get("df_resultados_v1_1", None))
+    
+    if df_res is not None:
+        with st.expander("☁️ Administrar Historial de Pronósticos Guardados en Google Drive"):
+            archivos_drive = drive_utils.listar_historial_drive()
+            render_historial_listado(archivos_drive, key_prefix="exp")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # 1. TABLA GENERAL
+        st.subheader("📋 Resumen General de Resultados")
+        st.dataframe(df_res, use_container_width=True)
+        
+        st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
+        
+        # 2. TABLA INTERMEDIA DE COMPETENCIA
+        st.subheader("⚔️ Matriz de Competencia Multimodelo por SKU (Validación BIAS & MAE)")
+        st.markdown("Selecciona un SKU para auditar el desempeño de los 10 modelos evaluados:")
+        
+        sku_lista = [normalizar_sku(s) for s in df_res["SKU"].unique()]
+        sku_seleccionado = st.selectbox("SKU para Auditoría Múltiple:", sku_lista, key="sku_audit_select")
+        
+        dict_comp = st.session_state.get("detalle_competencia", st.session_state.get("detalle_competencia_v1_1", {}))
+        if sku_seleccionado in dict_comp:
+            df_comp = dict_comp[sku_seleccionado]
+            st.dataframe(df_comp, use_container_width=True)
+        else:
+            st.info("ℹ️ Clic en Procesar Datos para generar el torneo de modelos.")
+            
+        st.markdown("<br><hr style='border: 0; height: 1px; background: #232A34; margin: 25px 0;'><br>", unsafe_allow_html=True)
+        
+        # 3. INSPECCIÓN INDIVIDUAL Y GRÁFICO
+        st.subheader("📈 Inspección Individual por SKU")
+        
+        df_inp_state = st.session_state.get("df_input", st.session_state.get("df_input_v1_1", None))
+        
+        filtro_res = df_res[df_res["SKU"] == sku_seleccionado]
+        filtro_inp = df_inp_state[df_inp_state["SKU_norm"] == sku_seleccionado] if df_inp_state is not None else pd.DataFrame()
+        
+        if not filtro_res.empty:
+            row_res = filtro_res.iloc[0]
+            
+            col1, col2, col3, col4, col5 = st.columns(5)
+            with col1:
+                render_kpi_card("Categoría", row_res["Categoria"])
+            with col2:
+                render_kpi_card("Método Ganador", row_res["Metodo_Ganador"])
+            with col3:
+                render_kpi_card("Pronóstico M37", f"{row_res['Pronostico_M37']} uds")
+            with col4:
+                label_pdr = f"{row_res['Punto_Reorden_PDR']} uds"
+                if row_res.get("Ajuste_Piso_Evento") == "🛡️ SÍ (Ajustado)":
+                    label_pdr += " (🛡️)"
+                render_kpi_card("Punto Reorden (PDR)", label_pdr)
+            with col5:
+                render_kpi_card("Stock Máximo", f"{row_res['Stock_Maximo']} uds")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            # Banner informativo si se activó el Candado de Auditoría
+            estatus_aud = str(row_res.get("Estatus_Auditoria", "OK"))
+            if "A REVISIÓN" in estatus_aud:
+                st.error(f"🚨 **Candado de Auditoría Activado ({estatus_aud}):** La propuesta del modelo representa una reducción extrema sobre el Stock Máximo configurado en el ERP ({row_res.get('Stock_Max_Actual', 'N/D')} uds). Se requiere validación física en almacén.")
+            
+            # Banner informativo si aplicó la regla de piso
+            if row_res.get("Ajuste_Piso_Evento") == "🛡️ SÍ (Ajustado)":
+                st.info("🛡️ **Piso de Protección Activado:** El Punto de Reorden ($PDR$) de este SKU fue ajustado hacia arriba para ser al menos igual al **Evento Máximo** registrado, garantizando cobertura ante picos de demanda.")
+            
+            # Banner informativo si aplicó la regla de techo de cobertura
+            if "⚠️ Topado" in str(row_res.get("Cobertura_Max_Ajustada", "")):
+                st.warning(f"⚠️ **Techo Supremo de Cobertura Activado:** El Stock Máximo de este SKU fue ajustado para no rebasar la política corporativa de días de inventario ({row_res['Cobertura_Max_Ajustada']}), conservando la brecha de reabasto.")
+
+            if not filtro_inp.empty:
+                row_inp = filtro_inp.iloc[0]
+                cols_m = [c for c in df_inp_state.columns if c.startswith("M") and c[1:].isdigit()]
+                serie_hist = np.array([safe_float(val, 0.0) for val in row_inp[cols_m].values], dtype=float)
+                
+                x_hist = np.arange(1, 37)
+                media_train = np.mean(serie_hist[:24])
+                np.random.seed(42)
+                backtest_m25_m36 = media_train + (serie_hist[24:36] - media_train) * 0.45
+                
+                x_backtest = np.arange(25, 37)
+                x_m37 = 37
+                val_m37 = float(row_res['Pronostico_M37'])
+                
+                x_pronostico_full = np.append(x_backtest, x_m37)
+                y_pronostico_full = np.append(backtest_m25_m36, val_m37)
+                
+                fig, ax = plt.subplots(figsize=(10, 4.2))
+                fig.patch.set_facecolor("#121519")
+                ax.set_facecolor("#1A1F26")
+                
+                ax.axvspan(24.5, 36.5, color="#00E5FF", alpha=0.05, label="Ventana Evaluación (M25-M36)")
+                ax.plot(x_hist, serie_hist, label="Ventas Reales Históricas", marker="o", color="#00E5FF", linewidth=2.2, zorder=3)
+                ax.plot(x_pronostico_full, y_pronostico_full, label=f"Pronóstico {row_res['Metodo_Ganador']} (Backtest + M37)", 
+                        marker="s", linestyle="--", color="#FF2A6D", linewidth=2.2, zorder=4)
+                ax.scatter(x_m37, val_m37, color="#FF2A6D", s=90, edgecolor="#FFFFFF", linewidth=2, zorder=5)
+                
+                ax.set_title(f"Historial, Auditoría de Backtest (M25-M36) y Proyección M37 — SKU {sku_seleccionado}", color="#F1F5F9", fontsize=12, fontweight='bold')
+                ax.set_xlabel("Periodos Operativos (M01 - M37)", color="#94A3B8")
+                ax.set_ylabel("Unidades Demanda", color="#94A3B8")
+                ax.set_xticks(np.arange(0, 39, 3))
+                ax.tick_params(colors="#94A3B8")
+                ax.legend(facecolor="#121519", edgecolor="#2D3748", labelcolor="#F1F5F9", loc="upper left")
+                ax.grid(True, linestyle=":", alpha=0.3, color="#2D3748")
+                
+                st.pyplot(fig)
             else:
-                st.warning(f"⚠️ No se encontraron registros coincidentes para el SKU: `{sku_seleccionado}`.")
+                st.info("ℹ️ Estás visualizando un resultado histórico desde Google Drive. Carga el Excel original si deseas visualizar el gráfico de la serie de tiempo.")
+        else:
+            st.warning(f"⚠️ No se encontraron registros coincidentes para el SKU: `{sku_seleccionado}`.")
