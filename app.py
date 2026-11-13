@@ -54,14 +54,12 @@ def aplicar_ui_kit():
         url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 90 Q 30 30, 60 70 T 120 40' stroke='rgba(0,229,255,0.035)' stroke-width='1.5' fill='none'/%3E%3Cpath d='M0 100 Q 40 50, 80 80 T 120 20' stroke='rgba(123,44,191,0.025)' stroke-width='1.5' fill='none'/%3E%3Ccircle cx='60' cy='70' r='2.5' fill='rgba(0,229,255,0.05)'/%3E%3Ccircle cx='120' cy='40' r='3.5' fill='rgba(0,229,255,0.08)'/%3E%3C/svg%3E") !important;
 }
 
-/* Barra Superior Horizontal (Top Navbar) */
-.top-navbar-container {
-    background-color: #161A20;
-    border: 1px solid #232A34;
-    border-radius: 12px;
-    padding: 12px 16px;
-    margin-bottom: 18px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+/* Contenedor Real de la Barra Superior Horizontal (Top Navbar) */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background-color: #161A20 !important;
+    border: 1px solid #232A34 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
 }
 
 /* Estilo de la Barra Lateral (Sidebar exclusiva para Guía de Operación) */
@@ -121,7 +119,7 @@ div.stButton > button:disabled {
 }
 
 /* Acoplamiento de botones secundarios en la Barra Superior Horizontal */
-div[data-testid="column"] div.stButton > button[kind="secondary"] {
+div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] div.stButton > button[kind="secondary"] {
     background-color: #121519 !important;
     color: #CBD5E1 !important;
     border: 1px solid #2D3748 !important;
@@ -134,14 +132,14 @@ div[data-testid="column"] div.stButton > button[kind="secondary"] {
     margin-top: -16px !important;
     transition: all 0.25s ease !important;
 }
-div[data-testid="column"] div.stButton > button[kind="secondary"]:hover {
+div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] div.stButton > button[kind="secondary"]:hover {
     border-color: #00E5FF !important;
     color: #00E5FF !important;
     background-color: rgba(0, 229, 255, 0.08) !important;
 }
 
 /* Acoplamiento del botón primario activo con su tarjeta superior en Top Navbar */
-div[data-testid="column"] div.stButton > button[kind="primary"] {
+div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] div.stButton > button[kind="primary"] {
     border-radius: 0 0 10px 10px !important;
     font-size: 12px !important;
     padding: 8px 12px !important;
